@@ -1,0 +1,21 @@
+[project]
+name = "m5stick-encoder"
+version = "0.1.0"
+description = "Educational encoder/decoder device for kids on M5StickC PLUS"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "mak3r" }]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["src/main.py", "src/hw", "src/ui/display_m5.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+ignore = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
