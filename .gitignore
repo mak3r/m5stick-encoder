@@ -10,5 +10,11 @@ build/
 dist/
 .DS_Store
 
+# Claude Code local settings (per-user permission allowlist)
+.claude/settings.local.json
+
+# Serial / device logs captured during firmware sessions
+logs/
+
 # Firmware binaries (large, not source)
 firmware/*.bin
