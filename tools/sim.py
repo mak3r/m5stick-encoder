@@ -41,6 +41,12 @@ LOGICAL_H = 135
 DEFAULT_SCALE = 4
 TICK_MS = 50
 
+# Window during which a KeyPress arriving immediately after a KeyRelease is
+# treated as OS auto-repeat (e.g. macOS Cocoa, X11 with autorepeat enabled)
+# rather than a real release-then-press. Real button-up on hardware never
+# does this; this guard only exists in the host sim.
+AUTO_REPEAT_GUARD_MS = 50
+
 # Map the abstract color ints from screen.render to concrete RGB tuples.
 # BG=0 black, FG=1 white (panel reads in ambient light), ACCENT=2 amber/
 # orange to evoke the M5StickC's amber PWR LED for the focused selection.
@@ -65,8 +71,20 @@ KEY_TO_BUTTON: dict[str, Button] = {
 class KeyboardAdapter:
     """Pure-logic glue between keyboard events and the App stack.
 
-    Suppresses tkinter's auto-repeat: only the first PRESS for a held key
-    is forwarded to the FSM; the matching RELEASE clears the held flag.
+    Suppresses tkinter's auto-repeat in two ways:
+
+    1. While a key is held, redundant KeyPress events are dropped (only the
+       first PRESS reaches the FSM).
+    2. When a scheduler is injected (``schedule_after`` / ``cancel_scheduled``)
+       the RELEASE edge is deferred by ``guard_ms``. If a fresh KeyPress for
+       the same button arrives inside that window, it's treated as OS auto-
+       repeat: the deferred release is cancelled and the button is still
+       considered held. Only if the window expires does the RELEASE actually
+       reach the FSM.
+
+    With no scheduler injected (the test default), behaviour matches the
+    original immediate-release semantics so existing wiring tests continue
+    to pass without an event loop.
     """
 
     def __init__(
@@ -74,18 +92,36 @@ class KeyboardAdapter:
         app: App,
         fsm: ButtonFSM,
         render_fn: Callable[[], None],
+        schedule_after: Callable[[int, Callable[[], None]], object] | None = None,
+        cancel_scheduled: Callable[[object], None] | None = None,
+        guard_ms: int = AUTO_REPEAT_GUARD_MS,
     ) -> None:
         self._app = app
         self._fsm = fsm
         self._render = render_fn
+        self._schedule_after = schedule_after
+        self._cancel_scheduled = cancel_scheduled
+        self._guard_ms = guard_ms
         self._held: dict[Button, bool] = {b: False for b in Button}
+        # Per-button token for a pending deferred-release callback. Present
+        # only while the guard window is open after a KeyRelease.
+        self._pending_release: dict[Button, object] = {}
 
     def on_key_press(self, keysym: str) -> bool:
         button = self._lookup(keysym)
         if button is None:
             return False
+        # Auto-repeat detection: a PRESS arriving while a release for the
+        # same button is still pending means the OS is re-asserting a held
+        # key. Cancel the deferred release; the FSM never learns the key
+        # was momentarily "up".
+        pending = self._pending_release.pop(button, None)
+        if pending is not None and self._cancel_scheduled is not None:
+            self._cancel_scheduled(pending)
         if self._held[button]:
-            # Auto-repeat suppression: only the first PRESS counts.
+            # Either redundant tkinter auto-repeat PRESS, or the guard
+            # window just absorbed a phantom RELEASE/PRESS pair. Either
+            # way the FSM already considers this button held.
             return self._drain_and_render()
         self._held[button] = True
         self._fsm.feed(button, Edge.PRESS)
@@ -97,13 +133,33 @@ class KeyboardAdapter:
             return False
         if not self._held[button]:
             return False
-        self._held[button] = False
-        self._fsm.feed(button, Edge.RELEASE)
+        if self._schedule_after is None:
+            # Legacy / test default: emit RELEASE immediately.
+            self._held[button] = False
+            self._fsm.feed(button, Edge.RELEASE)
+            return self._drain_and_render()
+        # Defer the RELEASE so a phantom auto-repeat PRESS can cancel it.
+        # Keep _held True so a cancelling PRESS doesn't double-fire into
+        # the FSM.
+        token = self._schedule_after(self._guard_ms, lambda: self._fire_release(button))
+        self._pending_release[button] = token
         return self._drain_and_render()
 
     def tick(self) -> bool:
         """Drain time-driven events (e.g. eager PWR_LONG, expiring shorts)."""
         return self._drain_and_render()
+
+    def _fire_release(self, button: Button) -> None:
+        # Callback fired by the scheduler after the guard window expires.
+        # If another PRESS arrived first it will have cancelled this token,
+        # so we should not be invoked then -- but guard defensively anyway.
+        if self._pending_release.pop(button, None) is None:
+            return
+        if not self._held[button]:
+            return
+        self._held[button] = False
+        self._fsm.feed(button, Edge.RELEASE)
+        self._drain_and_render()
 
     def _lookup(self, keysym: str) -> Button | None:
         return KEY_TO_BUTTON.get(keysym.lower())
@@ -258,7 +314,13 @@ def main(argv: list[str] | None = None) -> int:
     def do_render() -> None:
         render(display, app.state)
 
-    adapter = KeyboardAdapter(app, fsm, do_render)
+    adapter = KeyboardAdapter(
+        app,
+        fsm,
+        do_render,
+        schedule_after=root.after,
+        cancel_scheduled=root.after_cancel,
+    )
 
     # Initial paint scheduled via root.after(0, ...) so it runs after the
     # mainloop starts and the canvas is realized. Painting before
