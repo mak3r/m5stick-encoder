@@ -260,8 +260,10 @@ def main(argv: list[str] | None = None) -> int:
 
     adapter = KeyboardAdapter(app, fsm, do_render)
 
-    # Initial paint so the user sees the starting state.
-    do_render()
+    # Initial paint scheduled via root.after(0, ...) so it runs after the
+    # mainloop starts and the canvas is realized. Painting before
+    # realization is a no-op on macOS system Tk and leaves the canvas blank.
+    root.after(0, do_render)
 
     def on_press(event) -> None:
         adapter.on_key_press(event.keysym)
