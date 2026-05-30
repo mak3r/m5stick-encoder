@@ -35,25 +35,41 @@ Hold **BTN A** during power-on to skip auto-run and drop to REPL (safety recover
 This is a [MicroPython](https://micropython.org) project that runs on M5Stack's official MicroPython firmware for the M5StickC PLUS. The encoder logic is pure Python and host-testable; the UI runs against a `Display` protocol that's mocked in tests.
 
 ```bash
-# Host-side dev
-pip install ruff pytest
-pytest tests/
-ruff check src/ tests/
+# Bootstrap the project venv (one time per clone)
+python3 -m venv .venv
+.venv/bin/pip install --upgrade pip ruff pytest
 
-# Flash and upload to device (see tools/)
+# Host-side dev loop
+.venv/bin/pytest -q
+.venv/bin/ruff check src/ tests/
+
+# Flash and upload to device (firmware persona is recommended — see /firmware)
 ./tools/flash.sh    # esptool: erase + write MicroPython firmware
 ./tools/upload.sh   # mpremote: copy src/ to device
 ./tools/repl.sh     # mpremote: open REPL
 ```
 
+The project ships an empty `.venv/` policy: it's gitignored and rebuilt locally per the steps above. Global `pip` / `pipx` / `brew install` are intentionally off the allowlist for Claude Code subagents — the venv is the only sanctioned tool path so that automated work is reproducible and contained.
+
 ## Personas
 
-This repo uses three Claude Code subagent personas under `.claude/agents/`:
-- **developer** — picks up `phase-1` GitHub issues, writes code + tests
-- **test** — writes host-runnable pytest cases against mock display + synthetic events
-- **firmware** — works interactively with a human to flash and upload to the device
+Three Claude Code personas drive this project:
 
-Phase 2–6 issues are intentionally underspecified and labeled `needs-plan`. The developer persona will not implement them without a fresh `/plan` session with a human first.
+- **developer** (`.claude/agents/developer.md`) — autonomous subagent that picks up `phase-1` issues, writes code + tests, opens PRs
+- **test** (`.claude/agents/test.md`) — autonomous subagent that writes host-runnable pytest cases against mock display + synthetic events
+- **firmware** (`.claude/commands/firmware.md`) — interactive slash command that adopts the firmware role in the current Claude session; talks to the human while flashing and uploading to a real M5StickC PLUS
+
+Invoke them via:
+
+```text
+/watch-work developer           # one phase-1 issue, then stop
+/watch-work developer 30        # 30 minutes of autonomous developer work
+/watch-work developer 2         # for a specific issue: /watch-work developer 2
+/watch-work test                # same patterns for the test persona
+/firmware                       # adopt firmware persona for an interactive flash/upload session
+```
+
+Phase 2–6 issues are intentionally underspecified and labeled `needs-plan`. The developer persona refuses to implement them without a fresh `/plan` session with a human first.
 
 ## License
 
