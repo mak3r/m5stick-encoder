@@ -49,6 +49,32 @@ python3 -m venv .venv
 ./tools/repl.sh     # mpremote: open REPL
 ```
 
+The common dev commands are also wrapped in a `Makefile`; run `make help`
+to see them. Frequently used:
+
+```bash
+make test           # pytest -q
+make lint           # ruff check src/ tests/
+make sim            # launch the host simulator (see below)
+```
+
+### Quick start: try the encoder on your desktop
+
+After bootstrapping the venv, run:
+
+```bash
+make sim
+```
+
+A tkinter window opens approximating the 240x135 landscape display at 4x
+scale. The keyboard map is shown in the help overlay:
+
+- `[` or `a` — BTN A (scroll wheel left)
+- `]` or `b` — BTN B (scroll wheel right)
+- `space` — PWR (tap = select letter, double-tap = backspace, hold ~1 s = toggle ENC/DEC)
+
+No device required.
+
 The project ships an empty `.venv/` policy: it's gitignored and rebuilt locally per the steps above. Global `pip` / `pipx` / `brew install` are intentionally off the allowlist for Claude Code subagents — the venv is the only sanctioned tool path so that automated work is reproducible and contained.
 
 ## Personas
