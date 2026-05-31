@@ -92,9 +92,38 @@ def test_pwr_double_on_empty_is_noop():
     assert app.state.out_buf == ""
 
 
-def test_pwr_long_toggles_enc_to_dec_and_clears_bufs():
+def test_pwr_long_toggles_enc_to_dec_and_swaps_bufs():
     app = make_app()
     _type_word(app, "HELLO")
+    changed = app.handle(ButtonEvent.PWR_LONG)
+    assert changed is True
+    assert app.state.mode == "DEC"
+    # Previous out_buf becomes new in_buf; re-derived under DEC, rot13 is
+    # self-inverse so out_buf lands back at the original plaintext.
+    assert app.state.in_buf == "URYYB"
+    assert app.state.out_buf == "HELLO"
+
+
+def test_pwr_long_round_trip_swaps_and_redrives():
+    app = make_app()
+    _type_word(app, "HELLO")
+    assert app.state.mode == "ENC"
+    assert app.state.in_buf == "HELLO"
+    assert app.state.out_buf == "URYYB"
+
+    app.handle(ButtonEvent.PWR_LONG)
+    assert app.state.mode == "DEC"
+    assert app.state.in_buf == "URYYB"
+    assert app.state.out_buf == "HELLO"
+
+    app.handle(ButtonEvent.PWR_LONG)
+    assert app.state.mode == "ENC"
+    assert app.state.in_buf == "HELLO"
+    assert app.state.out_buf == "URYYB"
+
+
+def test_pwr_long_on_empty_buffers_only_toggles_mode():
+    app = make_app()
     changed = app.handle(ButtonEvent.PWR_LONG)
     assert changed is True
     assert app.state.mode == "DEC"
@@ -115,15 +144,15 @@ def test_pwr_long_preserves_wheel_idx_and_algorithm():
     assert app.state.algorithm == "rot13"
 
 
-def test_sequence_type_hello_then_toggle_clears():
+def test_sequence_type_hello_then_toggle_swaps():
     app = make_app()
     _type_word(app, "HELLO")
     assert app.state.in_buf == "HELLO"
     assert app.state.out_buf == "URYYB"
     app.handle(ButtonEvent.PWR_LONG)
     assert app.state.mode == "DEC"
-    assert app.state.in_buf == ""
-    assert app.state.out_buf == ""
+    assert app.state.in_buf == "URYYB"
+    assert app.state.out_buf == "HELLO"
 
 
 def test_mutating_events_return_true():
@@ -155,8 +184,12 @@ def test_app_is_cipher_agnostic_via_protocol_stub():
     app.handle(ButtonEvent.PWR_SHORT)
     assert app.state.in_buf == "AA"
     assert app.state.out_buf == "XX"
-    # Switch to DEC: PWR_LONG clears bufs; subsequent PWR_SHORT uses decode().
+    # Switch to DEC: PWR_LONG swaps out_buf into in_buf and re-derives via
+    # decode() under the new mode.
     app.handle(ButtonEvent.PWR_LONG)
     assert app.state.mode == "DEC"
+    assert app.state.in_buf == "XX"
+    assert app.state.out_buf == "YY"
     app.handle(ButtonEvent.PWR_SHORT)
-    assert app.state.out_buf == "Y"
+    assert app.state.in_buf == "XXA"
+    assert app.state.out_buf == "YYY"

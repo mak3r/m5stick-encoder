@@ -38,8 +38,11 @@ class App:
             return True
         if event is ButtonEvent.PWR_LONG:
             s.mode = "DEC" if s.mode == "ENC" else "ENC"
-            s.in_buf = ""
-            s.out_buf = ""
+            # Swap-and-re-derive: previous output becomes new input, then
+            # recompute under the new mode. Demonstrates encode/decode are
+            # inverse operations rather than discarding the kid's work.
+            s.in_buf = s.out_buf
+            s.out_buf = self._transform(s.in_buf)
             return True
         return False
 
