@@ -24,7 +24,7 @@ def field(*, default=_MISSING, default_factory=_MISSING, repr=True, init=True):
 
 def _process_class(cls):
     annotations = {}
-    for klass in reversed(cls.__mro__):
+    for klass in reversed(getattr(cls, "__mro__", (cls,))):
         annotations.update(getattr(klass, "__annotations__", {}))
 
     fields = []

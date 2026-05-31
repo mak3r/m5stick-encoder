@@ -11,8 +11,7 @@ def runtime_checkable(cls):
     return cls
 
 
-_ProtocolMeta = type("_ProtocolMeta", (type,), {})
-Protocol = _ProtocolMeta("Protocol", (object,), {})
+Protocol = type("Protocol", (object,), {})
 
 
 class _LiteralForm:
