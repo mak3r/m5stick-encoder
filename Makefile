@@ -12,6 +12,9 @@ lint:        ## ruff lint
 fix:         ## ruff auto-fix
 	.venv/bin/ruff check --fix src/ tests/
 
+mpy-check:   ## verify src/ imports cleanly under MicroPython unix port
+	MICROPYPATH="$(PWD)/src:$(PWD)/vendor" micropython tools/mpy_import_check.py
+
 sim:         ## launch host simulator
 	.venv/bin/python tools/sim.py
 
@@ -30,4 +33,4 @@ logs:        ## tail /firmware serial-capture logs
 clean:       ## remove cache dirs
 	rm -rf __pycache__ src/**/__pycache__ tests/__pycache__ .pytest_cache .ruff_cache
 
-.PHONY: help test lint fix sim upload flash repl logs clean
+.PHONY: help test lint fix mpy-check sim upload flash repl logs clean

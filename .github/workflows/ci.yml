@@ -23,3 +23,40 @@ jobs:
 
       - name: Pytest
         run: pytest -q
+
+  mpy-import:
+    runs-on: ubuntu-latest
+    env:
+      MPY_TAG: v1.28.0
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache MicroPython unix build
+        id: mpy-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.mpy-unix
+          key: mpy-unix-v1.28.0-ubuntu
+
+      - name: Install MicroPython build deps
+        if: steps.mpy-cache.outputs.cache-hit != 'true'
+        run: sudo apt-get install -y --no-install-recommends build-essential libffi-dev pkg-config
+
+      - name: Build MicroPython unix port
+        if: steps.mpy-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --branch ${{ env.MPY_TAG }} https://github.com/micropython/micropython.git /tmp/micropython
+          make -C /tmp/micropython/mpy-cross
+          make -C /tmp/micropython/ports/unix submodules
+          make -C /tmp/micropython/ports/unix
+          mkdir -p ~/.mpy-unix
+          cp /tmp/micropython/ports/unix/build-standard/micropython ~/.mpy-unix/micropython
+
+      - name: Add MicroPython to PATH
+        run: echo "$HOME/.mpy-unix" >> "$GITHUB_PATH"
+
+      - name: Verify MicroPython version
+        run: micropython --version
+
+      - name: Run mpy-check
+        run: make mpy-check
