@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from encoder.base import Cipher
 from encoder.rot13 import Rot13Cipher
 
