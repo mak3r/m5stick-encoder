@@ -37,23 +37,40 @@ class EnumMeta(type):
         return len(cls._member_map_)
 
 
-class Enum(metaclass=EnumMeta):
-    @property
-    def name(self):
-        return self._name_
+# metaclass= keyword is not supported in MicroPython class bodies; use EnumMeta() directly.
+def _name_prop(self):
+    return self._name_
 
-    @property
-    def value(self):
-        return self._value_
 
-    def __repr__(self):
-        return f"<{self.__class__.__name__}.{self._name_}: {self._value_!r}>"
+def _value_prop(self):
+    return self._value_
 
-    def __str__(self):
-        return f"{self.__class__.__name__}.{self._name_}"
 
-    def __hash__(self):
-        return hash(self._value_)
+def _enum_repr(self):
+    return f"<{self.__class__.__name__}.{self._name_}: {self._value_!r}>"
 
-    def __eq__(self, other):
-        return self is other
+
+def _enum_str(self):
+    return f"{self.__class__.__name__}.{self._name_}"
+
+
+def _enum_hash(self):
+    return hash(self._value_)
+
+
+def _enum_eq(self, other):
+    return self is other
+
+
+Enum = EnumMeta(
+    "Enum",
+    (object,),
+    {
+        "name": property(_name_prop),
+        "value": property(_value_prop),
+        "__repr__": _enum_repr,
+        "__str__": _enum_str,
+        "__hash__": _enum_hash,
+        "__eq__": _enum_eq,
+    },
+)

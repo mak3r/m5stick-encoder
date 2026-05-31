@@ -1,5 +1,6 @@
 # MicroPython shim: typing — Protocol, runtime_checkable, Literal
 # Device uses these only for class *definition*; isinstance checks are host-only.
+# metaclass= keyword is not supported in MicroPython class bodies; use type() directly.
 
 
 def _identity(cls):
@@ -10,12 +11,8 @@ def runtime_checkable(cls):
     return cls
 
 
-class _ProtocolMeta(type):
-    pass
-
-
-class Protocol(metaclass=_ProtocolMeta):
-    pass
+_ProtocolMeta = type("_ProtocolMeta", (type,), {})
+Protocol = _ProtocolMeta("Protocol", (object,), {})
 
 
 class _LiteralForm:
