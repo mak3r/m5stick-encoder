@@ -36,7 +36,9 @@ This is a [MicroPython](https://micropython.org) project that runs on M5Stack's 
 
 ```bash
 # Bootstrap the project venv (one time per clone)
-python3 -m venv .venv
+make bootstrap        # picks python3.13 or python3.11; errors if neither found
+# or manually (python3.13 and python3.11 both satisfy requires-python = ">=3.11"):
+python3.13 -m venv .venv
 .venv/bin/pip install --upgrade pip ruff pytest
 
 # Host-side dev loop
