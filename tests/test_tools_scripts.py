@@ -281,3 +281,29 @@ def test_upload_no_manual_power_cycle_instruction():
     with open(UPLOAD_SH) as f:
         content = f.read()
     assert "Power-cycle" not in content, "upload.sh must not instruct manual power-cycle"
+
+
+def test_upload_deploys_config_json_when_present():
+    """upload.sh must copy config.json to :/config.json when the file exists."""
+    with open(UPLOAD_SH) as f:
+        content = f.read()
+    assert "config.json" in content, "upload.sh must reference config.json"
+    assert ":/config.json" in content, "upload.sh must deploy to :/config.json on the device"
+
+
+def test_upload_skips_config_json_silently_when_absent():
+    """upload.sh must not exit non-zero when config.json is absent.
+
+    The copy must be guarded by a file-existence check so the script does not
+    fail or warn when no local config.json is present.
+    """
+    with open(UPLOAD_SH) as f:
+        content = f.read()
+    # The conditional block must guard the copy — not an unconditional cp.
+    assert '-f "$REPO_ROOT/config.json"' in content, (
+        "upload.sh must guard config.json copy with a file-existence check"
+    )
+    # The cp command for config.json must appear inside the if block, not before it.
+    if_pos = content.index('-f "$REPO_ROOT/config.json"')
+    cp_pos = content.index(":/config.json")
+    assert cp_pos > if_pos, "config.json copy must appear after the existence guard"
