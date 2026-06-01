@@ -127,6 +127,12 @@ def test_palette_amber(tree):
     assert p.get(2) == 0xFB00, "color 2 must be amber (0xFB00)"
 
 
+def test_palette_cursor_green(tree):
+    p = _dict_const(tree, "_PALETTE")
+    assert p is not None
+    assert p.get(3) == 0x07E0, "color 3 must be bright green (0x07E0)"
+
+
 # ---------------------------------------------------------------------------
 # Class-level width/height attributes
 
