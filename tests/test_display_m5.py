@@ -175,3 +175,16 @@ def test_show_is_noop(source):
     assert "def show(" in source
     # The method exists; the body should be a no-op (just pass or a comment).
     assert "pass" in source
+
+
+def test_init_calls_setRotation(source):
+    """__init__ must call M5.Lcd.setRotation() to fix landscape orientation."""
+    assert "M5.Lcd.setRotation(" in source
+
+
+def test_rotation_value_is_1_or_3(source):
+    """Landscape rotation must be 1 or 3 for 240×135 on M5StickC PLUS."""
+    import re
+    m = re.search(r"M5\.Lcd\.setRotation\((\d+)\)", source)
+    assert m is not None, "M5.Lcd.setRotation(N) call not found"
+    assert int(m.group(1)) in (1, 3), "rotation value must be 1 or 3 for landscape"
