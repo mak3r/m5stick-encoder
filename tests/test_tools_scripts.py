@@ -1,4 +1,4 @@
-"""Host-side tests for tools/flash.sh, tools/upload.sh, tools/repl.sh.
+"""Host-side tests for tools/flash.sh, tools/upload.sh, tools/repl.sh, tools/device_prep.sh.
 
 These tests verify argument validation and pre-flight checks without requiring
 a connected device or the mpremote/esptool.py binaries.
@@ -14,6 +14,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FLASH_SH = os.path.join(REPO, "tools", "flash.sh")
 UPLOAD_SH = os.path.join(REPO, "tools", "upload.sh")
 REPL_SH = os.path.join(REPO, "tools", "repl.sh")
+DEVICE_PREP_SH = os.path.join(REPO, "tools", "device_prep.sh")
 
 # Minimal PATH that keeps bash/sh builtins available while excluding extras.
 # /bin and /usr/bin are needed for basic shell commands; we add a controlled
@@ -181,14 +182,14 @@ class TestReplSh:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("script", [FLASH_SH, UPLOAD_SH, REPL_SH])
+@pytest.mark.parametrize("script", [FLASH_SH, UPLOAD_SH, REPL_SH, DEVICE_PREP_SH])
 def test_script_uses_set_euo_pipefail(script):
     with open(script) as f:
         content = f.read()
     assert "set -euo pipefail" in content
 
 
-@pytest.mark.parametrize("script", [FLASH_SH, UPLOAD_SH, REPL_SH])
+@pytest.mark.parametrize("script", [FLASH_SH, UPLOAD_SH, REPL_SH, DEVICE_PREP_SH])
 def test_script_is_executable(script):
     assert os.access(script, os.X_OK)
 
@@ -307,3 +308,62 @@ def test_upload_skips_config_json_silently_when_absent():
     if_pos = content.index('-f "$REPO_ROOT/config.json"')
     cp_pos = content.index(":/config.json")
     assert cp_pos > if_pos, "config.json copy must appear after the existence guard"
+
+
+# ---------------------------------------------------------------------------
+# device_prep.sh
+# ---------------------------------------------------------------------------
+
+
+class TestDevicePrepSh:
+    def test_missing_mpremote_exits_nonzero(self, tmp_path):
+        r = _run(DEVICE_PREP_SH, extra_env={"PATH": _path_without("mpremote", tmp_path)})
+        assert r.returncode != 0
+        assert "mpremote" in r.stderr
+
+    def test_script_is_executable(self):
+        assert os.access(DEVICE_PREP_SH, os.X_OK)
+
+
+def test_device_prep_uses_resume_mode():
+    """device_prep.sh must use `mpremote resume` for UIFlow 2 compatibility."""
+    with open(DEVICE_PREP_SH) as f:
+        content = f.read()
+    assert "resume" in content, "device_prep.sh must use mpremote resume"
+
+
+def test_device_prep_removes_res_stickcplus():
+    """device_prep.sh must target the UIFlow 2 JPEG asset directory."""
+    with open(DEVICE_PREP_SH) as f:
+        content = f.read()
+    assert "/flash/res/stickcplus" in content, "device_prep.sh must remove /flash/res/stickcplus"
+
+
+def test_device_prep_removes_avatar_jpg():
+    """device_prep.sh must remove the standalone avatar.jpg."""
+    with open(DEVICE_PREP_SH) as f:
+        content = f.read()
+    assert "avatar.jpg" in content, "device_prep.sh must remove avatar.jpg"
+
+
+def test_device_prep_checks_free_space():
+    """device_prep.sh must call statvfs to assert minimum free space."""
+    with open(DEVICE_PREP_SH) as f:
+        content = f.read()
+    assert "statvfs" in content, "device_prep.sh must verify free space with statvfs"
+    assert "150" in content, "device_prep.sh must check for 150 KB minimum free space"
+
+
+def test_device_prep_sets_boot_option():
+    """device_prep.sh must set boot_option=0 via esp32.NVS."""
+    with open(DEVICE_PREP_SH) as f:
+        content = f.read()
+    assert "boot_option" in content, "device_prep.sh must set boot_option NVS key"
+    assert "esp32.NVS" in content, "device_prep.sh must use esp32.NVS"
+
+
+def test_upload_mentions_make_prep():
+    """upload.sh header must mention 'make prep' as a prerequisite."""
+    with open(UPLOAD_SH) as f:
+        content = f.read()
+    assert "make prep" in content, "upload.sh must mention 'make prep' in its header comment"
