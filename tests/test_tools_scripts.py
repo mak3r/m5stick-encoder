@@ -265,3 +265,17 @@ def test_upload_deploys_to_libs_not_lib():
     with open(UPLOAD_SH) as f:
         content = f.read()
     assert ":/flash/libs/" in content, "upload.sh must deploy shims to /flash/libs/"
+
+
+def test_upload_resets_device_after_upload():
+    """upload.sh must trigger machine.reset() after a successful upload."""
+    with open(UPLOAD_SH) as f:
+        content = f.read()
+    assert "machine.reset()" in content, "upload.sh must call machine.reset() to restart device"
+
+
+def test_upload_no_manual_power_cycle_instruction():
+    """upload.sh must not tell the user to manually power-cycle after reset is automated."""
+    with open(UPLOAD_SH) as f:
+        content = f.read()
+    assert "Power-cycle" not in content, "upload.sh must not instruct manual power-cycle"

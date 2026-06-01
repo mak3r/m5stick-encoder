@@ -9,8 +9,8 @@ import sys
 import time
 
 from encoder import ALGORITHMS
-from hw.axp_buttons import AxpButtons
 from hw.buzzer import Buzzer
+from hw.pwr_button import PwrButton
 from ui.app import App
 from ui.buttons import ButtonFSM
 from ui.events import Button, Edge
@@ -47,7 +47,7 @@ def _run_loop(
     display,
     app: App,
     fsm: ButtonFSM,
-    axp: AxpButtons,
+    pwr: PwrButton,
     btn_a_pin,
     btn_b_pin,
     buzzer: Buzzer,
@@ -81,7 +81,7 @@ def _run_loop(
             if app.handle(event):
                 dirty = True
 
-        for event in axp.poll():
+        for event in pwr.poll():
             if app.handle(event):
                 dirty = True
 
@@ -111,9 +111,9 @@ def main() -> None:
         buzzer = Buzzer(muted=False)
 
         axp_bus = I2C(0, sda=Pin(21), scl=Pin(22), freq=400_000)
-        axp = AxpButtons()
 
         display = M5Display()
+        pwr = PwrButton()
         batt = _read_battery(axp_bus)
 
         screen.render_splash(display, battery_pct=batt)
@@ -126,7 +126,7 @@ def main() -> None:
         app = App(state, ciphers)
         fsm = ButtonFSM(_time_ms)
 
-        _run_loop(display, app, fsm, axp, btn_a, btn_b, buzzer, axp_bus=axp_bus)
+        _run_loop(display, app, fsm, pwr, btn_a, btn_b, buzzer, axp_bus=axp_bus)
 
     except Exception as exc:
         print("CRASH:", exc)
