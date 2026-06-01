@@ -24,11 +24,6 @@ _PIN_BTN_B = 39   # side button B (active-low, internal pull-up)
 
 _BATT_REFRESH_MS = 10_000  # refresh battery readout every ~10 s
 
-# AXP192 register for power-off (bit 7 = POWEROFF).
-_AXP_ADDR = 0x34
-_REG_AXP_POWEROFF = 0x32
-_AXP_POWEROFF_BIT = 1 << 7
-
 
 def _time_ms() -> int:
     return time.ticks_ms()
@@ -49,11 +44,28 @@ def _read_battery(axp_bus) -> str:
         return "?"
 
 
-def _axp_power_off(axp_bus) -> None:
-    """Write the AXP192 power-off bit; device shuts down immediately."""
+def _axp_power_off() -> None:
+    """Shut down via UIFlow 2 power API; falls back to raw AXP192 write."""
     try:
-        current = axp_bus.readfrom_mem(_AXP_ADDR, _REG_AXP_POWEROFF, 1)[0]
-        axp_bus.writeto_mem(_AXP_ADDR, _REG_AXP_POWEROFF, bytes([current | _AXP_POWEROFF_BIT]))
+        from M5 import Power  # type: ignore[import]
+        try:
+            Power.powerOff()
+            return
+        except AttributeError:
+            pass
+        try:
+            Power.timerSleep(0)
+            return
+        except AttributeError:
+            pass
+    except ImportError:
+        pass
+    # Last resort: direct AXP192 register write (may conflict with UIFlow 2 bus).
+    try:
+        from machine import I2C, Pin  # type: ignore[import]
+        bus = I2C(0, sda=Pin(21), scl=Pin(22), freq=400_000)
+        current = bus.readfrom_mem(0x34, 0x32, 1)[0]
+        bus.writeto_mem(0x34, 0x32, bytes([current | (1 << 7)]))
     except Exception:
         import machine  # type: ignore[import]
         machine.reset()
@@ -121,7 +133,7 @@ def _run_loop(
                 display.sleep()
             elif signal == "power_off":
                 display.sleep()
-                _axp_power_off(axp_bus)
+                _axp_power_off()
 
         time.sleep_ms(20)
 

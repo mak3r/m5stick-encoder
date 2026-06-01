@@ -300,3 +300,52 @@ def test_battery_above_max_clamps_to_100():
     hi = (raw_int >> 4) & 0xFF
     lo = raw_int & 0x0F
     assert _calc_battery_pct(hi, lo) == "100"
+
+
+# ---------------------------------------------------------------------------
+# _axp_power_off signature (issue #76)
+# ---------------------------------------------------------------------------
+
+
+def test_axp_power_off_takes_no_arguments():
+    """_axp_power_off must accept zero arguments — axp_bus removed per issue #76."""
+    with open(_MAIN_PATH) as f:
+        source = f.read()
+    tree = ast.parse(source)
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "_axp_power_off":
+            args = node.args
+            total_args = len(args.args) + len(args.posonlyargs) + len(args.kwonlyargs)
+            assert total_args == 0, (
+                f"_axp_power_off must take 0 args, found {total_args}: "
+                f"{[a.arg for a in args.args]}"
+            )
+            return
+    pytest.fail("_axp_power_off not found in main.py")
+
+
+def test_axp_power_off_not_called_with_axp_bus_arg():
+    """_run_loop must call _axp_power_off() with no args (not passing axp_bus)."""
+    with open(_MAIN_PATH) as f:
+        source = f.read()
+    tree = ast.parse(source)
+
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "_axp_power_off"
+        ):
+            assert node.args == [] and node.keywords == [], (
+                "_axp_power_off() must be called with no arguments in _run_loop"
+            )
+    # No assertion needed if no call site found — the signature test covers existence.
+
+
+def test_axp_bus_constants_removed():
+    """The old _AXP_ADDR / _REG_AXP_POWEROFF / _AXP_POWEROFF_BIT constants must be gone."""
+    with open(_MAIN_PATH) as f:
+        source = f.read()
+    for name in ("_AXP_ADDR", "_REG_AXP_POWEROFF", "_AXP_POWEROFF_BIT"):
+        assert name not in source, f"old constant {name!r} should be removed from main.py"
