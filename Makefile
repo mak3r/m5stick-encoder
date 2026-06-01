@@ -3,6 +3,18 @@
 help:        ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "} {printf "  %-12s %s\n", $$1, $$2}'
 
+bootstrap:   ## create .venv using python3.13 or python3.11 (errors if neither found)
+	@PYTHON=$$(command -v python3.13 || command -v python3.11 || true); \
+	if [ -z "$$PYTHON" ]; then \
+		echo "Error: python3.13 or python3.11 required (pyproject.toml: requires-python = \">=3.11\")"; \
+		echo "Install via: brew install python@3.13"; \
+		exit 1; \
+	fi; \
+	echo "Using $$PYTHON"; \
+	$$PYTHON -m venv .venv; \
+	.venv/bin/pip install --quiet --upgrade pip ruff pytest; \
+	echo "venv ready. Run: source .venv/bin/activate  (or use .venv/bin/ prefix)"
+
 test:        ## run host pytest suite
 	.venv/bin/pytest -q
 
@@ -33,4 +45,4 @@ logs:        ## tail /firmware serial-capture logs
 clean:       ## remove cache dirs
 	rm -rf __pycache__ src/**/__pycache__ tests/__pycache__ .pytest_cache .ruff_cache
 
-.PHONY: help test lint fix mpy-check sim upload flash repl logs clean
+.PHONY: help bootstrap test lint fix mpy-check sim upload flash repl logs clean
