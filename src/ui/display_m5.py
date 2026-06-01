@@ -12,11 +12,12 @@ Color convention (matches ``screen.py``):
   0 = background (black)   → 0x0000
   1 = foreground (white)   → 0xFFFF
   2 = accent (amber)       → 0xFB00
+  3 = cursor (bright green) → 0x07E0
 """
 
 import M5
 
-_PALETTE = {0: 0x0000, 1: 0xFFFF, 2: 0xFB00}
+_PALETTE = {0: 0x0000, 1: 0xFFFF, 2: 0xFB00, 3: 0x07E0}
 
 
 class M5Display:
