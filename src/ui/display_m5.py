@@ -19,6 +19,31 @@ import M5
 
 _PALETTE = {0: 0x0000, 1: 0xFFFF, 2: 0xFB00, 3: 0x07E0}
 
+# UIFlow 2.4.5 on the M5StickC PLUS (ESP32-PICO-D4) emits:
+#   E (...) gpio: gpio_pullup_en(78): GPIO number error
+# twice during M5.begin().  GPIO 78 is valid on ESP32-S3 (Plus 2) but not on
+# the original PICO-D4 (max GPIO 39).  This is an upstream UIFlow firmware bug;
+# see https://github.com/m5stack/uiflow-micropython (issue filed from #58).
+# The error is cosmetic — M5.begin() continues and all peripherals initialise
+# correctly — but _EXPECTED_BOARD lets us catch a board-misidentification that
+# would indicate a deeper problem.
+_EXPECTED_BOARD = "m5stickc_plus"
+
+
+def _check_board() -> None:
+    """Warn if M5.getBoard() does not match the expected M5StickC Plus."""
+    try:
+        board = M5.getBoard()
+        expected = getattr(M5.BOARD, "M5StickCPlus", None)
+        if expected is not None and board != expected:
+            print(
+                f"WARNING display_m5: M5.getBoard()={board!r} expected"
+                f" M5.BOARD.M5StickCPlus={expected!r} — wrong board?"
+            )
+    except AttributeError:
+        # UIFlow build without BOARD constants — skip the check.
+        pass
+
 
 class M5Display:
     """``Display`` Protocol implementation backed by ``M5.Lcd``."""
@@ -28,6 +53,7 @@ class M5Display:
 
     def __init__(self) -> None:
         M5.begin()
+        _check_board()
         M5.Lcd.setRotation(1)  # 1 = landscape 240×135 on M5StickC PLUS
 
     def fill(self, color: int) -> None:

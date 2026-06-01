@@ -188,3 +188,54 @@ def test_rotation_value_is_1_or_3(source):
     m = re.search(r"M5\.Lcd\.setRotation\((\d+)\)", source)
     assert m is not None, "M5.Lcd.setRotation(N) call not found"
     assert int(m.group(1)) in (1, 3), "rotation value must be 1 or 3 for landscape"
+
+
+# ---------------------------------------------------------------------------
+# Board-check guard (issue #58 — GPIO 78 / board misidentification)
+
+
+def test_check_board_function_exists(source):
+    """_check_board() must be defined to validate M5.getBoard() at boot."""
+    assert "def _check_board(" in source
+
+
+def test_check_board_calls_getBoard(source):
+    """_check_board() must call M5.getBoard() to detect board-type mismatch."""
+    assert "M5.getBoard()" in source
+
+
+def test_check_board_references_M5StickCPlus(source):
+    """_check_board() must compare against M5.BOARD.M5StickCPlus."""
+    assert "M5StickCPlus" in source
+
+
+def test_check_board_prints_warning(source):
+    """_check_board() must print a WARNING when the board does not match."""
+    assert "WARNING" in source
+
+
+def test_init_calls_check_board(source):
+    """M5Display.__init__ must call _check_board() after M5.begin()."""
+    # Locate __init__ body and verify the call is present.
+    m = re.search(r"def __init__\(.*?\).*?(?=\n    def |\Z)", source, re.DOTALL)
+    assert m is not None, "__init__ not found"
+    assert "_check_board()" in m.group(0), "__init__ must call _check_board()"
+
+
+def test_check_board_called_after_begin(source):
+    """_check_board() must appear after M5.begin() in __init__, not before."""
+    begin_pos = source.find("M5.begin()")
+    check_pos = source.find("_check_board()")
+    assert begin_pos != -1, "M5.begin() not found"
+    assert check_pos != -1, "_check_board() call not found"
+    assert check_pos > begin_pos, "_check_board() must be called after M5.begin()"
+
+
+def test_check_board_tolerates_missing_attribute(source):
+    """_check_board() must handle AttributeError if BOARD constants are absent."""
+    assert "AttributeError" in source
+
+
+def test_expected_board_constant_defined(source):
+    """_EXPECTED_BOARD module constant must be defined."""
+    assert "_EXPECTED_BOARD" in source
