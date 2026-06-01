@@ -268,10 +268,12 @@ def test_upload_deploys_to_libs_not_lib():
 
 
 def test_upload_resets_device_after_upload():
-    """upload.sh must trigger machine.reset() after a successful upload."""
+    """upload.sh must use mpremote reset (not exec machine.reset) after upload."""
     with open(UPLOAD_SH) as f:
         content = f.read()
-    assert "machine.reset()" in content, "upload.sh must call machine.reset() to restart device"
+    assert "machine.reset()" not in content, "upload.sh must not use machine.reset()"
+    # $MPR reset expands to either "mpremote reset" or "mpremote connect <port> reset"
+    assert "$MPR reset" in content, "upload.sh must use $MPR reset to avoid post-upload hang"
 
 
 def test_upload_no_manual_power_cycle_instruction():

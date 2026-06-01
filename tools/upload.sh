@@ -87,5 +87,5 @@ if echo "$SMOKE_OUT" | grep -q "ImportError"; then
 fi
 echo "$SMOKE_OUT"
 echo "==> Resetting device ..."
-$MPR resume exec "import machine; machine.reset()"
+$MPR reset || true
 echo "==> Upload complete. Device is restarting with new code."
