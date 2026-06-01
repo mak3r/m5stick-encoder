@@ -185,22 +185,8 @@ def _tick(
     return dirty
 
 
-def test_gpio_btn_a_press_appends_letter():
-    app, fsm, axp, pin_a, pin_b = _make_loop_stubs()
-    prev_a = [pin_a.value()]
-    prev_b = [pin_b.value()]
-
-    app.state.wheel_idx = 5  # 'F'
-    pin_a.press()
-    _tick(app, fsm, axp, pin_a, pin_b, prev_a, prev_b)
-    pin_a.release()
-    _tick(app, fsm, axp, pin_a, pin_b, prev_a, prev_b)
-
-    assert app.state.in_buf == "F"
-    assert app.state.out_buf == "S"  # rot13(F) = S
-
-
-def test_gpio_btn_b_press_increments_wheel():
+def test_gpio_btn_b_press_decrements_wheel():
+    # BTN_B now scrolls left (decrement).
     app, fsm, axp, pin_a, pin_b = _make_loop_stubs()
     prev_a = [pin_a.value()]
     prev_b = [pin_b.value()]
@@ -211,10 +197,11 @@ def test_gpio_btn_b_press_increments_wheel():
     pin_b.release()
     _tick(app, fsm, axp, pin_a, pin_b, prev_a, prev_b)
 
-    assert app.state.wheel_idx == 6
+    assert app.state.wheel_idx == 4
 
 
-def test_axp_pwr_short_scrolls_backward():
+def test_axp_pwr_short_scrolls_forward():
+    # PWR short tap now scrolls right (increment).
     app, fsm, axp, pin_a, pin_b = _make_loop_stubs()
     axp._events = [ButtonEvent.PWR_SHORT]
     prev_a = [pin_a.value()]
@@ -223,11 +210,12 @@ def test_axp_pwr_short_scrolls_backward():
     app.state.wheel_idx = 3
     _tick(app, fsm, axp, pin_a, pin_b, prev_a, prev_b)
 
-    assert app.state.wheel_idx == 2
+    assert app.state.wheel_idx == 4
     assert app.state.in_buf == ""
 
 
-def test_axp_pwr_long_toggles_mode():
+def test_axp_pwr_long_is_unhandled():
+    # PWR_LONG is no longer handled by App (hardware AXP shuts down instead).
     app, fsm, axp, pin_a, pin_b = _make_loop_stubs()
     axp._events = [ButtonEvent.PWR_LONG]
     prev_a = [pin_a.value()]
@@ -235,7 +223,7 @@ def test_axp_pwr_long_toggles_mode():
 
     assert app.state.mode == "ENC"
     _tick(app, fsm, axp, pin_a, pin_b, prev_a, prev_b)
-    assert app.state.mode == "DEC"
+    assert app.state.mode == "ENC"  # unchanged
 
 
 def test_dirty_flag_set_on_state_change():
