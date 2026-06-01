@@ -24,25 +24,25 @@ class App:
             s.in_buf = s.in_buf + letter
             s.out_buf = self._transform(s.in_buf)
             return True
-        if event is ButtonEvent.BTN_B_PRESS:
-            s.wheel_idx = (s.wheel_idx + 1) % 26
-            return True
-        if event is ButtonEvent.PWR_SHORT:
-            s.wheel_idx = (s.wheel_idx - 1) % 26
-            return True
-        if event is ButtonEvent.PWR_DOUBLE:
+        if event is ButtonEvent.BTN_A_DOUBLE:
             if not s.in_buf:
                 return False
             s.in_buf = s.in_buf[:-1]
             s.out_buf = self._transform(s.in_buf)
             return True
-        if event is ButtonEvent.PWR_LONG:
+        if event is ButtonEvent.BTN_A_LONG:
             s.mode = "DEC" if s.mode == "ENC" else "ENC"
             # Swap-and-re-derive: previous output becomes new input, then
             # recompute under the new mode. Demonstrates encode/decode are
             # inverse operations rather than discarding the kid's work.
             s.in_buf = s.out_buf
             s.out_buf = self._transform(s.in_buf)
+            return True
+        if event is ButtonEvent.BTN_B_PRESS:
+            s.wheel_idx = (s.wheel_idx - 1) % 26
+            return True
+        if event is ButtonEvent.PWR_SHORT:
+            s.wheel_idx = (s.wheel_idx + 1) % 26
             return True
         return False
 
