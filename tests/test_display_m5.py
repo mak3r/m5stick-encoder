@@ -247,3 +247,22 @@ def test_check_board_tolerates_missing_attribute(source):
 def test_expected_board_constant_defined(source):
     """_EXPECTED_BOARD module constant must be defined."""
     assert "_EXPECTED_BOARD" in source
+
+
+# ---------------------------------------------------------------------------
+# sleep() / wake() use UIFlow 2 native LCD API, not setBrightness
+
+
+def test_sleep_calls_M5_Lcd_sleep(source):
+    """sleep() must call M5.Lcd.sleep() for hardware low-power mode."""
+    assert "M5.Lcd.sleep()" in source, "sleep() must use M5.Lcd.sleep()"
+
+
+def test_wake_calls_M5_Lcd_wakeup(source):
+    """wake() must call M5.Lcd.wakeup() to restore the panel."""
+    assert "M5.Lcd.wakeup()" in source, "wake() must use M5.Lcd.wakeup()"
+
+
+def test_sleep_does_not_use_setBrightness(source):
+    """setBrightness is not reliable on AXP192 LDO3 — must not be used."""
+    assert "setBrightness" not in source, "setBrightness must be replaced by M5.Lcd.sleep/wakeup"
