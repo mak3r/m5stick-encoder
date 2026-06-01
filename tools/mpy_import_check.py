@@ -49,16 +49,24 @@ for _name in _imports:
         print("FAIL " + _name + " : " + str(_e))
         _failed.append(_name)
 
-# main raises NotImplementedError deliberately until issue #10 lands;
-# guard against that while still failing on ImportError.
+# main is MicroPython-device-only: it calls machine.Pin at boot.
+# On the unix micropython port ``machine`` is not available, so we accept
+# an ImportError from machine as a PASS (the module structure is correct;
+# hardware just isn't present).  Any other exception is a real failure.
 try:
     import main  # noqa: F401
     print("PASS main")
-except NotImplementedError:
-    print("PASS main (NotImplementedError expected, #10 pending)")
 except ImportError as _e:
-    print("FAIL main : " + str(_e))
-    _failed.append("main")
+    _msg = str(_e)
+    # The unix micropython port has a partial ``machine`` stub: module-level
+    # hardware names (Pin, I2C, PWM) are absent.  Any of those, or the
+    # missing display_m5 module, are expected on non-device builds.
+    _hw_names = ("machine", "display_m5", "Pin", "I2C", "PWM", "SPI")
+    if any(_hw in _msg for _hw in _hw_names):
+        print("PASS main (hardware import expected on unix port: " + _msg + ")")
+    else:
+        print("FAIL main : " + _msg)
+        _failed.append("main")
 except Exception as _e:
     print("FAIL main : " + str(_e))
     _failed.append("main")

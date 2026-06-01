@@ -90,12 +90,15 @@ def render_splash(display: Display, battery_pct: str = "?") -> None:
 def render(display: Display, state: State) -> None:
     display.fill(BG)
 
-    # Top bar: mode tag, algorithm name, word-length counter.
+    # Top bar: mode tag, algorithm name, word-length counter, battery.
     tag = f"[{state.mode}]"
     display.text(tag, 2, TOP_BAR_Y, ACCENT, scale=1)
     display.text(state.algorithm, 50, TOP_BAR_Y, FG, scale=1)
     counter = f"{min(len(state.in_buf), LINE_CHARS)}/{LINE_CHARS}"
-    display.text(counter, WIDTH - 5 * GLYPH_W, TOP_BAR_Y, FG, scale=1)
+    display.text(counter, WIDTH - 12 * GLYPH_W, TOP_BAR_Y, FG, scale=1)
+    # Battery: right-aligned; "B:100%" is the widest case (6 chars × 8px).
+    batt_str = f"B:{state.battery_pct}%"
+    display.text(batt_str, WIDTH - 6 * GLYPH_W, TOP_BAR_Y, FG, scale=1)
 
     # Cipher wheel: full A-Z in order, plus a caret rect under wheel_idx.
     for i, ch in enumerate(ALPHABET):

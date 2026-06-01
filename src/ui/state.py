@@ -21,3 +21,4 @@ class State:
     wheel_idx: int = 0
     in_buf: str = ""
     out_buf: str = ""
+    battery_pct: str = "?"
