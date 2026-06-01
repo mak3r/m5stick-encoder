@@ -82,9 +82,9 @@ class M5Display:
         pass
 
     def sleep(self) -> None:
-        """Turn the backlight off to save power."""
+        """Blank the backlight."""
         M5.Lcd.setBrightness(0)
 
     def wake(self) -> None:
-        """Restore the backlight to full brightness."""
+        """Restore the backlight."""
         M5.Lcd.setBrightness(100)

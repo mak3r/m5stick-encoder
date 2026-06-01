@@ -247,3 +247,37 @@ def test_check_board_tolerates_missing_attribute(source):
 def test_expected_board_constant_defined(source):
     """_EXPECTED_BOARD module constant must be defined."""
     assert "_EXPECTED_BOARD" in source
+
+
+# ---------------------------------------------------------------------------
+# sleep() / wake() blank the backlight via setBrightness (confirmed working on device)
+
+
+def test_sleep_calls_setBrightness_0(source):
+    """sleep() must blank the backlight with setBrightness(0)."""
+    assert "setBrightness(0)" in source, "sleep() must use M5.Lcd.setBrightness(0)"
+
+
+def test_wake_calls_setBrightness_100(source):
+    """wake() must restore the backlight with setBrightness(100)."""
+    assert "setBrightness(100)" in source, "wake() must use M5.Lcd.setBrightness(100)"
+
+
+def test_sleep_does_not_use_M5_Lcd_sleep(source):
+    """M5.Lcd.sleep() does not exist on UIFlow 2.4.5 — must not be called."""
+    assert "M5.Lcd.sleep()" not in source, "M5.Lcd.sleep() causes AttributeError on device"
+
+
+def test_wake_does_not_use_M5_Lcd_wakeup(source):
+    """M5.Lcd.wakeup() does not exist on UIFlow 2.4.5 — must not be called."""
+    assert "M5.Lcd.wakeup()" not in source, "M5.Lcd.wakeup() causes AttributeError on device"
+
+
+def test_sleep_does_not_use_powerSaveOn(source):
+    """M5.Lcd.powerSaveOn() does not blank the screen on device — must not be used."""
+    assert "powerSaveOn" not in source, "powerSaveOn() does not visually blank the screen"
+
+
+def test_wake_does_not_use_powerSaveOff(source):
+    """M5.Lcd.powerSaveOff() does not restore the screen on device — must not be used."""
+    assert "powerSaveOff" not in source, "powerSaveOff() does not visually restore the screen"
