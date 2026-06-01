@@ -80,3 +80,11 @@ class M5Display:
     def show(self) -> None:
         # M5.Lcd writes through to the panel immediately; no explicit flush needed.
         pass
+
+    def sleep(self) -> None:
+        """Turn the backlight off to save power."""
+        M5.Lcd.setBrightness(0)
+
+    def wake(self) -> None:
+        """Restore the backlight to full brightness."""
+        M5.Lcd.setBrightness(100)
