@@ -13,10 +13,12 @@ WIDTH = 240
 HEIGHT = 135
 
 # Colors are kept as small integers; concrete displays map them to the
-# panel's native format. 0 = background, 1 = foreground, 2 = accent.
+# panel's native format. 0 = background, 1 = foreground, 2 = accent,
+# 3 = cursor (bright green).
 BG = 0
 FG = 1
 ACCENT = 2
+CURSOR = 3
 
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 LINE_CHARS = 16
@@ -28,7 +30,6 @@ GLYPH_H = 8
 # Vertical anchor points for each layout band.
 TOP_BAR_Y = 2
 WHEEL_Y = 22
-CARET_Y = WHEEL_Y + GLYPH_H + 2
 FOCUS_Y = 44
 IN_Y = 88
 OUT_Y = 102
@@ -100,11 +101,10 @@ def render(display: Display, state: State) -> None:
     batt_str = f"B:{state.battery_pct}%"
     display.text(batt_str, WIDTH - 6 * GLYPH_W, TOP_BAR_Y, FG, scale=1)
 
-    # Cipher wheel: full A-Z in order, plus a caret rect under wheel_idx.
+    # Cipher wheel: full A-Z in order; cursor character is bright green.
     for i, ch in enumerate(ALPHABET):
-        display.text(ch, _wheel_x(i), WHEEL_Y, FG, scale=1)
-    caret_x = _wheel_x(state.wheel_idx)
-    display.rect(caret_x, CARET_Y, GLYPH_W, 2, ACCENT, fill=True)
+        color = CURSOR if i == state.wheel_idx else FG
+        display.text(ch, _wheel_x(i), WHEEL_Y, color, scale=1)
 
     # Focused-letter mapping row at scale 3 — centered.
     left, right = _focus_letters(state)

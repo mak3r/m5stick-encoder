@@ -2,7 +2,7 @@ import pytest
 
 from ui.display import Display
 from ui.display_mock import DisplayMock, ShowCall, TextCall
-from ui.screen import ALPHABET, FOCUS_SCALE, LINE_CHARS, _wheel_x, render
+from ui.screen import ALPHABET, CURSOR, FG, FOCUS_SCALE, LINE_CHARS, render
 from ui.state import State
 
 
@@ -48,12 +48,27 @@ def test_cipher_wheel_letters_are_scale_1(mock: DisplayMock):
 
 
 @pytest.mark.parametrize("idx", [0, 1, 12, 25])
-def test_caret_position_tracks_wheel_idx(mock: DisplayMock, idx: int):
+def test_cursor_character_is_green(mock: DisplayMock, idx: int):
     render(mock, State(wheel_idx=idx))
-    expected_x = _wheel_x(idx)
-    # The caret is the only filled rect drawn at the wheel x-axis stride.
-    caret = next(r for r in mock.rects() if r.fill and r.x == expected_x)
-    assert caret.x == expected_x
+    # The character under the cursor must be drawn with CURSOR color.
+    wheel_calls = [c for c in mock.texts() if len(c.s) == 1 and c.s.isalpha()]
+    cursor_char = wheel_calls[idx]
+    assert cursor_char.s == ALPHABET[idx]
+    assert cursor_char.color == CURSOR
+
+
+@pytest.mark.parametrize("idx", [0, 1, 12, 25])
+def test_non_cursor_characters_are_fg(mock: DisplayMock, idx: int):
+    render(mock, State(wheel_idx=idx))
+    wheel_calls = [c for c in mock.texts() if len(c.s) == 1 and c.s.isalpha()]
+    non_cursor = [c for i, c in enumerate(wheel_calls) if i != idx]
+    assert all(c.color == FG for c in non_cursor)
+
+
+def test_no_caret_rect_drawn(mock: DisplayMock):
+    render(mock, State(wheel_idx=5))
+    # Sub-cursor rect has been replaced by a green character; no filled rects.
+    assert not mock.rects()
 
 
 def test_in_and_out_show_full_content_when_short(mock: DisplayMock):
@@ -135,13 +150,15 @@ def test_render_starts_with_fill(mock: DisplayMock):
     assert mock.calls[0].__class__.__name__ == "FillCall"
 
 
-def test_caret_x_differs_between_indices(mock: DisplayMock):
+def test_cursor_x_differs_between_indices():
     m1 = DisplayMock()
     m2 = DisplayMock()
     render(m1, State(wheel_idx=0))
     render(m2, State(wheel_idx=25))
-    x0 = next(r for r in m1.rects() if r.fill).x
-    x25 = next(r for r in m2.rects() if r.fill).x
+    wheel_0 = [c for c in m1.texts() if len(c.s) == 1 and c.s.isalpha()]
+    wheel_25 = [c for c in m2.texts() if len(c.s) == 1 and c.s.isalpha()]
+    x0 = next(c.x for c in wheel_0 if c.color == CURSOR)
+    x25 = next(c.x for c in wheel_25 if c.color == CURSOR)
     assert x0 < x25
 
 
