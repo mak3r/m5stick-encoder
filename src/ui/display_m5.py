@@ -27,6 +27,7 @@ class M5Display:
 
     def __init__(self) -> None:
         M5.begin()
+        M5.Lcd.setRotation(1)  # 1 = landscape 240×135 on M5StickC PLUS
 
     def fill(self, color: int) -> None:
         M5.Lcd.fillScreen(_PALETTE.get(color, 0x0000))

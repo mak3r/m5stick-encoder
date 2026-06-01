@@ -9,6 +9,11 @@ stubs for all hardware dependencies.
 
 from __future__ import annotations
 
+import ast
+import os
+
+import pytest
+
 from encoder.rot13 import Rot13Cipher
 from ui.app import App
 from ui.buttons import ButtonFSM
@@ -16,6 +21,43 @@ from ui.display_mock import DisplayMock
 from ui.events import Button, ButtonEvent, Edge
 from ui.screen import render
 from ui.state import State
+
+_REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_MAIN_PATH = os.path.join(_REPO, "src", "main.py")
+
+
+# ---------------------------------------------------------------------------
+# main.py entry-point guard (issue #48)
+# ---------------------------------------------------------------------------
+
+
+def test_main_uses_name_guard():
+    """main() must only be called under ``if __name__ == "__main__"`` so that
+    ``import main`` from the smoke test doesn't enter the infinite loop."""
+    with open(_MAIN_PATH) as f:
+        source = f.read()
+    tree = ast.parse(source)
+
+    # Only inspect direct module-level statements (not nested nodes).
+    for node in tree.body:
+        if (
+            isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Name)
+            and node.value.func.id == "main"
+        ):
+            pytest.fail(
+                "main() is called unconditionally at module level; "
+                "wrap it in `if __name__ == '__main__':` to fix the smoke-test hang"
+            )
+
+
+def test_main_name_guard_present_in_source():
+    """The source must contain the ``if __name__`` guard string."""
+    with open(_MAIN_PATH) as f:
+        source = f.read()
+    assert '__name__ == "__main__"' in source or "__name__ == '__main__'" in source
+
 
 # ---------------------------------------------------------------------------
 # State.battery_pct
