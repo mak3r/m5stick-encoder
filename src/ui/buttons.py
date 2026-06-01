@@ -6,6 +6,10 @@ DEBOUNCE_MS = 20
 LONG_PRESS_MS = 1000
 DOUBLE_WINDOW_MS = 300
 
+# BtnB auto-scroll: initial delay before repeat begins, then interval.
+BTN_B_REPEAT_DELAY_MS = 500
+BTN_B_SCROLL_MS = 300
+
 
 class ButtonFSM:
     """Translate raw (button, edge) inputs into high-level ButtonEvents.
@@ -27,13 +31,22 @@ class ButtonFSM:
       emitted as PWR_DOUBLE; otherwise PWR_SHORT is emitted once the
       window expires (checked at drain() time)
 
-    BTN_B emits BTN_B_PRESS immediately on PRESS; RELEASE is ignored.
+    BTN_B rules:
+    - BTN_B_PRESS emits immediately on PRESS.
+    - While held past BTN_B_REPEAT_DELAY_MS, drain() emits BTN_B_LONG
+      every BTN_B_SCROLL_MS so the caller scrolls the wheel continuously.
+    - RELEASE clears the hold state; no event is emitted on release.
 
     All timing is driven by an injected ``time_ms_fn`` so tests can run
     against a virtual clock.
     """
 
-    def __init__(self, time_ms_fn: Callable[[], int]):
+    def __init__(
+        self,
+        time_ms_fn: Callable[[], int],
+        btn_b_repeat_delay_ms: int = BTN_B_REPEAT_DELAY_MS,
+        btn_b_scroll_ms: int = BTN_B_SCROLL_MS,
+    ):
         self._now = time_ms_fn
         self._pending: list[ButtonEvent] = []
         self._last_press_ms: dict[Button, int] = {}
@@ -47,6 +60,12 @@ class ButtonFSM:
         self._pwr_long_emitted = False
         self._pwr_pending_short_release_ms: int | None = None
         self._pwr_press_consumed_by_double = False
+
+        # BtnB auto-scroll state
+        self._btn_b_press_ms: int | None = None
+        self._btn_b_last_scroll_ms: int | None = None
+        self._btn_b_repeat_delay_ms = btn_b_repeat_delay_ms
+        self._btn_b_scroll_ms = btn_b_scroll_ms
 
     def feed(self, button: Button, edge: Edge) -> None:
         now = self._now()
@@ -64,6 +83,8 @@ class ButtonFSM:
     def _on_press(self, button: Button, now: int) -> None:
         if button is Button.B:
             self._pending.append(ButtonEvent.BTN_B_PRESS)
+            self._btn_b_press_ms = now
+            self._btn_b_last_scroll_ms = None
             return
         if button is Button.A:
             self._on_btn_a_press(now)
@@ -104,7 +125,10 @@ class ButtonFSM:
         self._pwr_press_consumed_by_double = False
 
     def _on_release(self, button: Button, now: int) -> None:
-        if button is Button.A:
+        if button is Button.B:
+            self._btn_b_press_ms = None
+            self._btn_b_last_scroll_ms = None
+        elif button is Button.A:
             self._on_btn_a_release(now)
         elif button is Button.PWR:
             self._on_pwr_release(now)
@@ -143,6 +167,17 @@ class ButtonFSM:
 
     def drain(self) -> list[ButtonEvent]:
         now = self._now()
+        # BtnB auto-scroll: emit BTN_B_LONG while held past the repeat delay.
+        if self._btn_b_press_ms is not None:
+            held = now - self._btn_b_press_ms
+            if held >= self._btn_b_repeat_delay_ms:
+                if self._btn_b_last_scroll_ms is None:
+                    # First repeat tick.
+                    self._pending.append(ButtonEvent.BTN_B_LONG)
+                    self._btn_b_last_scroll_ms = now
+                elif now - self._btn_b_last_scroll_ms >= self._btn_b_scroll_ms:
+                    self._pending.append(ButtonEvent.BTN_B_LONG)
+                    self._btn_b_last_scroll_ms = now
         # Eager BTN_A_LONG: held past threshold with no release yet.
         if (
             self._btn_a_press_ms is not None
