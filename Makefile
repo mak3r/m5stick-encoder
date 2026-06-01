@@ -30,7 +30,10 @@ mpy-check:   ## verify src/ imports cleanly under MicroPython unix port
 sim:         ## launch host simulator
 	.venv/bin/python tools/sim.py
 
-upload:      ## push src/ to a connected device via mpremote (see /firmware)
+prep:        ## remove UIFlow 2 bloat and assert free space (run once on fresh device)
+	./tools/device_prep.sh
+
+upload:      ## push src/ to a connected device via mpremote (run `make prep` first on fresh device)
 	./tools/upload.sh
 
 flash:       ## flash MicroPython firmware (see /firmware)
@@ -45,4 +48,4 @@ logs:        ## tail /firmware serial-capture logs
 clean:       ## remove cache dirs
 	rm -rf __pycache__ src/**/__pycache__ tests/__pycache__ .pytest_cache .ruff_cache
 
-.PHONY: help bootstrap test lint fix mpy-check sim upload flash repl logs clean
+.PHONY: help bootstrap test lint fix mpy-check sim prep upload flash repl logs clean

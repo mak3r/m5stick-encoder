@@ -3,6 +3,9 @@
 # Usage: tools/upload.sh [port]
 # If port is omitted, mpremote auto-selects the first detected device.
 #
+# Run `make prep` once on a fresh device before first upload.
+# It removes UIFlow 2 resource bloat (~280 KB) and ensures >= 150 KB free space.
+#
 # The device must be in USB mode before running this script.
 # From the UIFlow 2 launch screen: BtnB → BtnB → BtnA.
 #
