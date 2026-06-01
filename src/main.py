@@ -13,6 +13,7 @@ from hw.buzzer import Buzzer
 from hw.pwr_button import PwrButton
 from ui.app import App
 from ui.buttons import ButtonFSM
+from ui.config import btn_b_repeat_delay_ms, btn_b_scroll_ms, load_config
 from ui.events import Button, Edge
 import ui.screen as screen
 from ui.sleep import SleepManager
@@ -166,7 +167,12 @@ def main() -> None:
         state = State()
         ciphers = {name: cls() for name, cls in ALGORITHMS.items()}
         app = App(state, ciphers)
-        fsm = ButtonFSM(_time_ms)
+        cfg = load_config()
+        fsm = ButtonFSM(
+            _time_ms,
+            btn_b_repeat_delay_ms=btn_b_repeat_delay_ms(cfg),
+            btn_b_scroll_ms=btn_b_scroll_ms(cfg),
+        )
         sleep_mgr = SleepManager(_time_ms)
 
         _run_loop(display, app, fsm, pwr, btn_a, btn_b, buzzer, axp_bus=axp_bus, sleep_mgr=sleep_mgr)

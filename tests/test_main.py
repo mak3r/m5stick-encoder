@@ -349,3 +349,55 @@ def test_axp_bus_constants_removed():
         source = f.read()
     for name in ("_AXP_ADDR", "_REG_AXP_POWEROFF", "_AXP_POWEROFF_BIT"):
         assert name not in source, f"old constant {name!r} should be removed from main.py"
+
+
+# ---------------------------------------------------------------------------
+# Config wiring: load_config() must reach ButtonFSM (issue #82)
+# ---------------------------------------------------------------------------
+
+
+def test_main_imports_load_config():
+    """main.py must import load_config so config.json values can reach ButtonFSM."""
+    with open(_MAIN_PATH) as f:
+        source = f.read()
+    assert "load_config" in source, "load_config not imported in main.py"
+
+
+def test_main_calls_load_config_before_buttonfsmm():
+    """load_config() must be called in main() and its result passed to ButtonFSM."""
+    with open(_MAIN_PATH) as f:
+        source = f.read()
+    tree = ast.parse(source)
+
+    # Find main() function body.
+    main_body = None
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name == "main":
+            main_body = node
+            break
+    assert main_body is not None, "main() not found in main.py"
+
+    # load_config call must appear somewhere in main().
+    load_config_calls = [
+        n for n in ast.walk(main_body)
+        if isinstance(n, ast.Call)
+        and isinstance(n.func, ast.Name)
+        and n.func.id == "load_config"
+    ]
+    assert load_config_calls, "load_config() is not called inside main()"
+
+    # ButtonFSM() call must receive keyword args for the timing parameters.
+    fsm_calls = [
+        n for n in ast.walk(main_body)
+        if isinstance(n, ast.Call)
+        and isinstance(n.func, ast.Name)
+        and n.func.id == "ButtonFSM"
+    ]
+    assert fsm_calls, "ButtonFSM() not found in main()"
+    kwarg_names = {kw.arg for kw in fsm_calls[0].keywords}
+    assert "btn_b_repeat_delay_ms" in kwarg_names, (
+        "ButtonFSM() missing btn_b_repeat_delay_ms keyword arg"
+    )
+    assert "btn_b_scroll_ms" in kwarg_names, (
+        "ButtonFSM() missing btn_b_scroll_ms keyword arg"
+    )

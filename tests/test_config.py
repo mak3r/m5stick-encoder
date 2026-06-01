@@ -8,6 +8,10 @@ from ui.buttons import BTN_B_REPEAT_DELAY_MS, BTN_B_SCROLL_MS, ButtonFSM
 from ui.config import btn_b_repeat_delay_ms, btn_b_scroll_ms, load_config
 from ui.events import Button, ButtonEvent, Edge
 
+_REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_CONFIG_JSON = os.path.join(_REPO, "config.json")
+_CONFIG_EXAMPLE = os.path.join(_REPO, "config.json.example")
+
 
 class _Clock:
     def __init__(self) -> None:
@@ -141,3 +145,34 @@ def test_absent_config_produces_default_timing():
     assert fsm.drain() == [ButtonEvent.BTN_B_PRESS]
     clock.advance(1)
     assert fsm.drain() == [ButtonEvent.BTN_B_LONG]
+
+
+# ---------------------------------------------------------------------------
+# Repo config files must be valid JSON (issue #82)
+# ---------------------------------------------------------------------------
+
+
+def test_repo_config_json_is_valid():
+    """config.json at repo root must be valid JSON (quoted keys)."""
+    with open(_CONFIG_JSON) as f:
+        data = json.load(f)
+    assert isinstance(data, dict)
+
+
+def test_repo_config_json_example_exists_and_is_valid():
+    """config.json.example must exist and contain valid JSON."""
+    assert os.path.exists(_CONFIG_EXAMPLE), "config.json.example is missing from repo root"
+    with open(_CONFIG_EXAMPLE) as f:
+        data = json.load(f)
+    assert isinstance(data, dict)
+
+
+def test_load_config_returns_empty_dict_on_unquoted_keys():
+    """Files with unquoted JSON keys (a common mistake) fall back to {}."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        f.write("{ btn_b_scroll_ms: 300 }")
+        path = f.name
+    try:
+        assert load_config(path) == {}
+    finally:
+        os.unlink(path)
