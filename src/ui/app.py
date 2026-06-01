@@ -20,15 +20,15 @@ class App:
     def handle(self, event: ButtonEvent) -> bool:
         s = self.state
         if event is ButtonEvent.BTN_A_PRESS:
-            s.wheel_idx = (s.wheel_idx - 1) % 26
+            letter = ALPHABET[s.wheel_idx]
+            s.in_buf = s.in_buf + letter
+            s.out_buf = self._transform(s.in_buf)
             return True
         if event is ButtonEvent.BTN_B_PRESS:
             s.wheel_idx = (s.wheel_idx + 1) % 26
             return True
         if event is ButtonEvent.PWR_SHORT:
-            letter = ALPHABET[s.wheel_idx]
-            s.in_buf = s.in_buf + letter
-            s.out_buf = self._transform(s.in_buf)
+            s.wheel_idx = (s.wheel_idx - 1) % 26
             return True
         if event is ButtonEvent.PWR_DOUBLE:
             if not s.in_buf:

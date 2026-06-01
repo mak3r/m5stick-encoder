@@ -185,18 +185,19 @@ def _tick(
     return dirty
 
 
-def test_gpio_btn_a_press_decrements_wheel():
+def test_gpio_btn_a_press_appends_letter():
     app, fsm, axp, pin_a, pin_b = _make_loop_stubs()
     prev_a = [pin_a.value()]
     prev_b = [pin_b.value()]
 
-    app.state.wheel_idx = 5
+    app.state.wheel_idx = 5  # 'F'
     pin_a.press()
     _tick(app, fsm, axp, pin_a, pin_b, prev_a, prev_b)
     pin_a.release()
     _tick(app, fsm, axp, pin_a, pin_b, prev_a, prev_b)
 
-    assert app.state.wheel_idx == 4
+    assert app.state.in_buf == "F"
+    assert app.state.out_buf == "S"  # rot13(F) = S
 
 
 def test_gpio_btn_b_press_increments_wheel():
@@ -213,17 +214,17 @@ def test_gpio_btn_b_press_increments_wheel():
     assert app.state.wheel_idx == 6
 
 
-def test_axp_pwr_short_commits_letter():
+def test_axp_pwr_short_scrolls_backward():
     app, fsm, axp, pin_a, pin_b = _make_loop_stubs()
     axp._events = [ButtonEvent.PWR_SHORT]
     prev_a = [pin_a.value()]
     prev_b = [pin_b.value()]
 
-    app.state.wheel_idx = 0  # 'A'
+    app.state.wheel_idx = 3
     _tick(app, fsm, axp, pin_a, pin_b, prev_a, prev_b)
 
-    assert app.state.in_buf == "A"
-    assert app.state.out_buf == "N"  # rot13(A) = N
+    assert app.state.wheel_idx == 2
+    assert app.state.in_buf == ""
 
 
 def test_axp_pwr_long_toggles_mode():

@@ -7,9 +7,9 @@ is fed through the same ``ButtonFSM`` used on hardware so short/double/
 long-press semantics are exercised end-to-end.
 
 Keyboard map (also displayed in the help overlay):
-- ``[`` or ``a`` -> BTN A
-- ``]`` or ``b`` -> BTN B
-- ``space`` -> PWR (tap = short, double-tap = double, hold ~1s = long)
+- ``[`` or ``a`` -> BTN A  (append selected letter)
+- ``]`` or ``b`` -> BTN B  (scroll wheel forward)
+- ``space`` -> PWR  (tap = scroll backward, double-tap = backspace, hold ~1s = mode toggle)
 
 Run with ``make sim`` or ``python tools/sim.py``. No dependencies beyond
 stdlib tkinter.
@@ -252,8 +252,8 @@ def _build_app() -> tuple[App, ButtonFSM, State]:
 
 
 HELP_TEXT = (
-    "Keys: [ / a = BTN A   ] / b = BTN B   space = PWR "
-    "(tap=short, double=back, hold=mode)"
+    "Keys: [ / a = BTN A (append)   ] / b = BTN B (fwd)   space = PWR "
+    "(tap=back, double=backspace, hold=mode)"
 )
 
 
