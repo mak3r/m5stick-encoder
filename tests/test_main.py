@@ -363,7 +363,7 @@ def test_main_imports_load_config():
     assert "load_config" in source, "load_config not imported in main.py"
 
 
-def test_main_calls_load_config_before_buttonfsmm():
+def test_main_calls_load_config_before_buttonfsm():
     """load_config() must be called in main() and its result passed to ButtonFSM."""
     with open(_MAIN_PATH) as f:
         source = f.read()
@@ -400,4 +400,78 @@ def test_main_calls_load_config_before_buttonfsmm():
     )
     assert "btn_b_scroll_ms" in kwarg_names, (
         "ButtonFSM() missing btn_b_scroll_ms keyword arg"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Keyword cipher key-store wiring: load_key at boot, save_key callback (#73)
+# ---------------------------------------------------------------------------
+
+
+def _get_main_func(tree: ast.Module) -> ast.FunctionDef:
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name == "main":
+            return node
+    pytest.fail("main() not found in main.py")
+
+
+def test_main_imports_load_key_and_save_key():
+    """main.py must import both load_key and save_key from ui.key_store."""
+    with open(_MAIN_PATH) as f:
+        source = f.read()
+    assert "load_key" in source, "load_key not imported in main.py"
+    assert "save_key" in source, "save_key not imported in main.py"
+
+
+def test_main_calls_load_key_at_boot():
+    """main() must call load_key() and assign the result to state.cipher_key."""
+    with open(_MAIN_PATH) as f:
+        source = f.read()
+    tree = ast.parse(source)
+    main_func = _get_main_func(tree)
+
+    load_key_calls = [
+        n for n in ast.walk(main_func)
+        if isinstance(n, ast.Call)
+        and isinstance(n.func, ast.Name)
+        and n.func.id == "load_key"
+    ]
+    assert load_key_calls, "load_key() is not called inside main()"
+
+    # The result must be assigned to state.cipher_key.
+    assigns_cipher_key = [
+        n for n in ast.walk(main_func)
+        if isinstance(n, ast.Assign)
+        and any(
+            isinstance(t, ast.Attribute)
+            and t.attr == "cipher_key"
+            and isinstance(t.value, ast.Name)
+            and t.value.id == "state"
+            for t in n.targets
+        )
+    ]
+    assert assigns_cipher_key, "state.cipher_key is not assigned in main()"
+
+
+def test_main_passes_save_key_as_on_save_key():
+    """App() in main() must receive save_key as the on_save_key keyword arg."""
+    with open(_MAIN_PATH) as f:
+        source = f.read()
+    tree = ast.parse(source)
+    main_func = _get_main_func(tree)
+
+    app_calls = [
+        n for n in ast.walk(main_func)
+        if isinstance(n, ast.Call)
+        and isinstance(n.func, ast.Name)
+        and n.func.id == "App"
+    ]
+    assert app_calls, "App() not found in main()"
+
+    on_save_key_kwarg = [kw for kw in app_calls[0].keywords if kw.arg == "on_save_key"]
+    assert on_save_key_kwarg, "App() is missing on_save_key keyword arg"
+
+    kw_val = on_save_key_kwarg[0].value
+    assert isinstance(kw_val, ast.Name) and kw_val.id == "save_key", (
+        f"on_save_key must be save_key, got {ast.dump(kw_val)}"
     )

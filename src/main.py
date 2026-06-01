@@ -15,6 +15,7 @@ from ui.app import App
 from ui.buttons import ButtonFSM
 from ui.config import btn_b_repeat_delay_ms, btn_b_scroll_ms, load_config
 from ui.events import Button, Edge
+from ui.key_store import load_key, save_key
 import ui.screen as screen
 from ui.sleep import SleepManager
 from ui.state import State
@@ -165,8 +166,9 @@ def main() -> None:
 
         btn_b = Pin(_PIN_BTN_B, Pin.IN, Pin.PULL_UP)
         state = State()
+        state.cipher_key = load_key()
         ciphers = {name: cls() for name, cls in ALGORITHMS.items()}
-        app = App(state, ciphers)
+        app = App(state, ciphers, on_save_key=save_key)
         cfg = load_config()
         fsm = ButtonFSM(
             _time_ms,
