@@ -1,9 +1,8 @@
 """Structural tests for ``src/ui/display_m5.py``.
 
-``display_m5.py`` imports MicroPython builtins (``machine``, ``st7789``,
-``framebuf``) and cannot be imported on the host.  These tests verify its
-structure and configuration values by reading and parsing the source file,
-and confirm that the linter exclusion is present in ``pyproject.toml``.
+``display_m5.py`` imports MicroPython builtins (``M5``) and cannot be imported
+on the host.  These tests verify its structure by reading and parsing the source
+file, and confirm that the linter exclusion is present in ``pyproject.toml``.
 """
 
 import ast
@@ -31,7 +30,6 @@ def tree(source) -> ast.Module:
 # ---------------------------------------------------------------------------
 # Linter exclusion
 
-
 def test_pyproject_excludes_display_m5():
     """``display_m5.py`` must be in ``extend-exclude`` so ruff skips it."""
     with open(_PYPROJECT_PATH) as f:
@@ -42,60 +40,91 @@ def test_pyproject_excludes_display_m5():
 
 
 # ---------------------------------------------------------------------------
-# MicroPython-only imports present
+# UIFlow 2 API: M5 import present, st7789/machine/framebuf must NOT appear
 
 
-def test_imports_machine(source):
-    assert "import machine" in source
+def test_imports_M5(source):
+    assert "import M5" in source
 
 
-def test_imports_st7789(source):
-    assert "import st7789" in source
+def test_does_not_import_st7789(source):
+    assert "import st7789" not in source, "UIFlow 2 has no st7789 module"
 
 
-def test_imports_framebuf(source):
-    assert "import framebuf" in source
+def test_does_not_import_machine(source):
+    assert "import machine" not in source, "SPI wiring is handled by M5.begin()"
+
+
+def test_does_not_import_framebuf(source):
+    assert "import framebuf" not in source, "pixel-doubling via framebuf is replaced by M5.Lcd"
 
 
 # ---------------------------------------------------------------------------
-# Panel geometry constants
+# M5.Lcd API usage
 
 
-def _const(tree: ast.Module, name: str) -> int | None:
-    """Return the integer value of a module-level assignment, or None."""
+def test_uses_M5_Lcd_fillScreen(source):
+    assert "M5.Lcd.fillScreen(" in source
+
+
+def test_uses_M5_Lcd_fillRect(source):
+    assert "M5.Lcd.fillRect(" in source
+
+
+def test_uses_M5_Lcd_drawRect(source):
+    assert "M5.Lcd.drawRect(" in source
+
+
+def test_uses_M5_Lcd_drawString(source):
+    assert "M5.Lcd.drawString(" in source
+
+
+def test_uses_M5_Lcd_setTextSize(source):
+    assert "M5.Lcd.setTextSize(" in source
+
+
+def test_uses_M5_Lcd_setTextColor(source):
+    assert "M5.Lcd.setTextColor(" in source
+
+
+# ---------------------------------------------------------------------------
+# Color palette
+
+
+def _dict_const(tree: ast.Module, name: str) -> dict | None:
+    """Return the dict literal value of a module-level assignment, or None."""
     for node in ast.walk(tree):
         if (
             isinstance(node, ast.Assign)
             and len(node.targets) == 1
             and isinstance(node.targets[0], ast.Name)
             and node.targets[0].id == name
-            and isinstance(node.value, ast.Constant)
+            and isinstance(node.value, ast.Dict)
         ):
-            return node.value.value
+            return {
+                k.value: v.value
+                for k, v in zip(node.value.keys, node.value.values, strict=False)
+                if isinstance(k, ast.Constant) and isinstance(v, ast.Constant)
+            }
     return None
 
 
-def test_col_offset_is_40(tree):
-    assert _const(tree, "_COL_OFFSET") == 40, "Column offset must be 40"
+def test_palette_black(tree):
+    p = _dict_const(tree, "_PALETTE")
+    assert p is not None, "_PALETTE dict not found"
+    assert p.get(0) == 0x0000, "color 0 must be black (0x0000)"
 
 
-def test_row_offset_is_53(tree):
-    assert _const(tree, "_ROW_OFFSET") == 53, "Row offset must be 53"
+def test_palette_white(tree):
+    p = _dict_const(tree, "_PALETTE")
+    assert p is not None
+    assert p.get(1) == 0xFFFF, "color 1 must be white (0xFFFF)"
 
 
-def test_logical_width_is_240(tree):
-    # width is a class attribute, not a module-level constant; check source.
-    # Accept either a class-level annotation or a simple assignment.
-    assert _const(tree, "_PHYS_H") == 240, "_PHYS_H (landscape width) must be 240"
-
-
-def test_logical_height_is_135(tree):
-    assert _const(tree, "_PHYS_W") == 135, "_PHYS_W (landscape height) must be 135"
-
-
-def test_glyph_dimensions_are_8x8(tree):
-    assert _const(tree, "_GLYPH_W") == 8
-    assert _const(tree, "_GLYPH_H") == 8
+def test_palette_amber(tree):
+    p = _dict_const(tree, "_PALETTE")
+    assert p is not None
+    assert p.get(2) == 0xFB00, "color 2 must be amber (0xFB00)"
 
 
 # ---------------------------------------------------------------------------
@@ -134,21 +163,15 @@ def test_m5display_has_method(source, method):
 
 
 # ---------------------------------------------------------------------------
-# Scale handling: pixel-doubling branch exists for scale > 1
+# text() method handles scale parameter
 
 
 def test_text_method_has_scale_parameter(source):
-    # Signature: def text(self, s, x, y, color, scale=1)
     assert "scale: int = 1" in source or "scale=1" in source
 
 
-def test_pixel_doubling_uses_fill_rect(source):
-    """The scale > 1 path must use fill_rect to draw scaled pixels."""
-    assert "fill_rect" in source, (
-        "Pixel-doubling for scale>1 must use fill_rect"
-    )
-
-
-def test_scale_1_fast_path_exists(source):
-    """A fast path that skips pixel-doubling when scale == 1."""
-    assert "scale == 1" in source
+def test_show_is_noop(source):
+    """show() must be present and M5.Lcd needs no explicit flush."""
+    assert "def show(" in source
+    # The method exists; the body should be a no-op (just pass or a comment).
+    assert "pass" in source

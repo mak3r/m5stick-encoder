@@ -234,5 +234,34 @@ def test_upload_uses_per_file_loops_for_hw_and_encoder():
         content = f.read()
     assert 'src/encoder/*.py' in content, "upload.sh must glob encoder/*.py"
     assert 'src/hw/*.py' in content, "upload.sh must glob hw/*.py"
-    assert ':encoder/$(basename' in content, "upload.sh must use basename for encoder dest"
-    assert ':hw/$(basename' in content, "upload.sh must use basename for hw dest"
+    assert ':/flash/encoder/$(basename' in content, "upload.sh must use basename for encoder dest"
+    assert ':/flash/hw/$(basename' in content, "upload.sh must use basename for hw dest"
+
+
+def test_upload_uses_resume_mode():
+    """upload.sh must use `mpremote resume` for UIFlow 2 compatibility."""
+    with open(UPLOAD_SH) as f:
+        content = f.read()
+    assert "resume" in content, "upload.sh must use mpremote resume for UIFlow 2"
+
+
+def test_upload_uses_flash_paths():
+    """upload.sh must deploy to /flash/ for UIFlow 2 filesystem layout."""
+    with open(UPLOAD_SH) as f:
+        content = f.read()
+    assert ":/flash/" in content, "upload.sh must use /flash/ paths for UIFlow 2"
+
+
+def test_upload_sets_boot_option():
+    """upload.sh must set boot_option=0 so the device runs main.py on power-on."""
+    with open(UPLOAD_SH) as f:
+        content = f.read()
+    assert "boot_option" in content, "upload.sh must configure boot_option NVS key"
+    assert "esp32.NVS" in content, "upload.sh must use esp32.NVS to write boot_option"
+
+
+def test_upload_deploys_to_libs_not_lib():
+    """UIFlow 2 uses /flash/libs/ (not /flash/lib/) for vendor modules."""
+    with open(UPLOAD_SH) as f:
+        content = f.read()
+    assert ":/flash/libs/" in content, "upload.sh must deploy shims to /flash/libs/"

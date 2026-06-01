@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
-# Upload src/ and vendored shims to a connected M5StickC PLUS running MicroPython.
+# Upload src/ and vendored shims to a connected M5StickC PLUS running UIFlow 2.
 # Usage: tools/upload.sh [port]
 # If port is omitted, mpremote auto-selects the first detected device.
+#
+# The device must be in USB mode before running this script.
+# From the UIFlow 2 launch screen: BtnB → BtnB → BtnA.
+#
+# UIFlow 2 mounts the user filesystem at /flash/ and requires `mpremote resume`
+# so the startup menu does not intercept the connection.
 
 set -euo pipefail
 
@@ -29,43 +35,51 @@ if [[ -n "$PORT" ]]; then
     MPR="mpremote connect $PORT"
 fi
 
-# Create /lib on the device (ignore error if it already exists).
-echo "==> Ensuring :lib/ exists on device ..."
-$MPR mkdir :lib 2>/dev/null || true
+# UIFlow 2: user filesystem lives under /flash/
+# Use `resume` on every mpremote call so UIFlow's startup menu is bypassed.
 
-# Deploy vendor shims to :lib/ (skip the README).
-echo "==> Uploading vendor shims to :lib/ ..."
-$MPR cp "$REPO_ROOT/vendor/typing.py" :lib/typing.py
-$MPR cp "$REPO_ROOT/vendor/dataclasses.py" :lib/dataclasses.py
-$MPR cp "$REPO_ROOT/vendor/enum.py" :lib/enum.py
+# Create /flash/libs/ on the device (ignore error if it already exists).
+echo "==> Ensuring :/flash/libs/ exists on device ..."
+$MPR resume mkdir :/flash/libs 2>/dev/null || true
+
+# Deploy vendor shims to :/flash/libs/ (skip the README).
+echo "==> Uploading vendor shims to :/flash/libs/ ..."
+$MPR resume cp "$REPO_ROOT/vendor/typing.py" :/flash/libs/typing.py
+$MPR resume cp "$REPO_ROOT/vendor/dataclasses.py" :/flash/libs/dataclasses.py
+$MPR resume cp "$REPO_ROOT/vendor/enum.py" :/flash/libs/enum.py
 # collections is a package — copy the directory.
-$MPR mkdir :lib/collections 2>/dev/null || true
-$MPR cp "$REPO_ROOT/vendor/collections/__init__.py" :lib/collections/__init__.py
-$MPR cp "$REPO_ROOT/vendor/collections/abc.py" :lib/collections/abc.py
+$MPR resume mkdir :/flash/libs/collections 2>/dev/null || true
+$MPR resume cp "$REPO_ROOT/vendor/collections/__init__.py" :/flash/libs/collections/__init__.py
+$MPR resume cp "$REPO_ROOT/vendor/collections/abc.py" :/flash/libs/collections/abc.py
 
 # Deploy app code by explicit subtree, excluding test-only files.
 echo "==> Uploading app code ..."
-$MPR mkdir :encoder 2>/dev/null || true
+$MPR resume mkdir :/flash/encoder 2>/dev/null || true
 for f in "$REPO_ROOT"/src/encoder/*.py; do
-    $MPR cp "$f" ":encoder/$(basename "$f")"
+    $MPR resume cp "$f" ":/flash/encoder/$(basename "$f")"
 done
-$MPR mkdir :hw 2>/dev/null || true
+$MPR resume mkdir :/flash/hw 2>/dev/null || true
 for f in "$REPO_ROOT"/src/hw/*.py; do
-    $MPR cp "$f" ":hw/$(basename "$f")"
+    $MPR resume cp "$f" ":/flash/hw/$(basename "$f")"
 done
 
 # Upload ui/ files individually so display_mock.py is excluded.
-$MPR mkdir :ui 2>/dev/null || true
+$MPR resume mkdir :/flash/ui 2>/dev/null || true
 for f in "$REPO_ROOT"/src/ui/*.py; do
     [[ "$(basename "$f")" == "display_mock.py" ]] && continue
-    $MPR cp "$f" ":ui/$(basename "$f")"
+    $MPR resume cp "$f" ":/flash/ui/$(basename "$f")"
 done
 
-$MPR cp "$REPO_ROOT/src/main.py" :main.py
+$MPR resume cp "$REPO_ROOT/src/main.py" :/flash/main.py
+
+# Configure boot_option=0 so the device runs main.py directly on power-on
+# (skips the UIFlow startup menu and WiFi setup).
+echo "==> Setting boot_option=0 (app mode) ..."
+$MPR resume exec "import esp32; nvs = esp32.NVS('uiflow'); nvs.set_u8('boot_option', 0); nvs.commit()"
 
 # Smoke test: accept NotImplementedError (imports resolved) but fail on ImportError.
 echo "==> Running smoke test (import main) ..."
-SMOKE_OUT=$($MPR exec "import main" 2>&1) || true
+SMOKE_OUT=$($MPR resume exec "import main" 2>&1) || true
 if echo "$SMOKE_OUT" | grep -q "ImportError"; then
     echo "error: smoke test raised ImportError:" >&2
     echo "$SMOKE_OUT" >&2
