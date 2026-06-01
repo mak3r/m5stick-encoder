@@ -280,7 +280,7 @@ def test_upload_deploys_config_json_when_present():
     with open(UPLOAD_SH) as f:
         content = f.read()
     assert "config.json" in content, "upload.sh must reference config.json"
-    assert ":/flash/config.json" in content, "upload.sh must deploy to :/flash/config.json on the device"
+    assert ":/flash/config.json" in content, "upload.sh must deploy to :/flash/config.json"
 
 
 def test_upload_skips_config_json_silently_when_absent():
