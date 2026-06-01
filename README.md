@@ -97,6 +97,40 @@ Invoke them via:
 
 Phase 2–6 issues are intentionally underspecified and labeled `needs-plan`. The developer persona refuses to implement them without a fresh `/plan` session with a human first.
 
+## Flashing and uploading to the device
+
+These steps require `esptool.py` and `mpremote` on your PATH (`pipx install esptool mpremote`).
+
+### 1. Flash stock MicroPython
+
+```bash
+tools/flash.sh /dev/tty.usbserial-XXXX firmware/ESP32_GENERIC-20260406-v1.28.0.bin
+```
+
+The script erases flash, writes the firmware at 115200 baud (FTDI-safe speed), and appends an entry to `firmware/manifest.txt`.
+
+### 2. Upload app code and vendored shims
+
+```bash
+tools/upload.sh [port]          # port defaults to mpremote auto-detect
+```
+
+The script:
+1. Runs `.venv/bin/pytest -q` — refuses to upload if any test fails
+2. Pushes `vendor/` shims to `:lib/` on the device (provides `typing`, `dataclasses`, `enum`, `collections.abc`)
+3. Uploads `src/encoder/`, `src/hw/`, `src/ui/` (excluding `display_mock.py`), and `src/main.py`
+4. Runs `import main` as a smoke test — fails on `ImportError`, tolerates `NotImplementedError`
+
+### 3. Open a REPL
+
+```bash
+tools/repl.sh [port]            # Ctrl-X to exit
+```
+
+### Recovery
+
+If the device is unresponsive after a flash, hold **BTN A** while powering on to skip `main.py` and drop to REPL, then run `tools/repl.sh` to inspect.
+
 ## License
 
 Apache-2.0. See [LICENSE](./LICENSE).
