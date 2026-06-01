@@ -68,6 +68,25 @@ def _focus_letters(state: State) -> tuple[str, str]:
     return src, mapped
 
 
+def render_splash(display: Display, battery_pct: str = "?") -> None:
+    """Draw boot splash: title + battery %, then call show().
+
+    Caller is responsible for delaying ~1.5 s before calling ``render``.
+    ``battery_pct`` is a string so callers can pass "?" when unavailable.
+    """
+    display.fill(BG)
+    title = "SECRET CODE 1.0"
+    title_w = len(title) * GLYPH_W * 2
+    title_x = max(0, (WIDTH - title_w) // 2)
+    title_y = (HEIGHT - GLYPH_H * 2) // 2 - 10
+    display.text(title, title_x, title_y, ACCENT, scale=2)
+    batt_str = f"BAT: {battery_pct}%"
+    batt_w = len(batt_str) * GLYPH_W
+    batt_x = max(0, (WIDTH - batt_w) // 2)
+    display.text(batt_str, batt_x, title_y + GLYPH_H * 2 + 6, FG, scale=1)
+    display.show()
+
+
 def render(display: Display, state: State) -> None:
     display.fill(BG)
 
