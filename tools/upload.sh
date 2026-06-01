@@ -86,4 +86,6 @@ if echo "$SMOKE_OUT" | grep -q "ImportError"; then
     exit 1
 fi
 echo "$SMOKE_OUT"
-echo "==> Upload complete. Power-cycle the device to start the app."
+echo "==> Resetting device ..."
+$MPR resume exec "import machine; machine.reset()"
+echo "==> Upload complete. Device is restarting with new code."
