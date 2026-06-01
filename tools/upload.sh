@@ -78,7 +78,7 @@ $MPR resume cp "$REPO_ROOT/src/main.py" :/flash/main.py
 # Deploy config.json to device root if present locally; skip silently if absent.
 if [[ -f "$REPO_ROOT/config.json" ]]; then
     echo "==> Deploying config.json ..."
-    $MPR resume cp "$REPO_ROOT/config.json" :/config.json
+    $MPR resume cp "$REPO_ROOT/config.json" :/flash/config.json
 fi
 
 # Configure boot_option=0 so the device runs main.py directly on power-on

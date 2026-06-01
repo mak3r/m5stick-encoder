@@ -276,11 +276,11 @@ def test_upload_has_power_cycle_instruction():
 
 
 def test_upload_deploys_config_json_when_present():
-    """upload.sh must copy config.json to :/config.json when the file exists."""
+    """upload.sh must copy config.json to :/flash/config.json when the file exists."""
     with open(UPLOAD_SH) as f:
         content = f.read()
     assert "config.json" in content, "upload.sh must reference config.json"
-    assert ":/config.json" in content, "upload.sh must deploy to :/config.json on the device"
+    assert ":/flash/config.json" in content, "upload.sh must deploy to :/flash/config.json on the device"
 
 
 def test_upload_skips_config_json_silently_when_absent():
@@ -297,7 +297,7 @@ def test_upload_skips_config_json_silently_when_absent():
     )
     # The cp command for config.json must appear inside the if block, not before it.
     if_pos = content.index('-f "$REPO_ROOT/config.json"')
-    cp_pos = content.index(":/config.json")
+    cp_pos = content.index(":/flash/config.json")
     assert cp_pos > if_pos, "config.json copy must appear after the existence guard"
 
 

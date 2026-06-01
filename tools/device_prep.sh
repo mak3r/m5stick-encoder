@@ -77,15 +77,16 @@ except OSError:
 done
 
 echo "==> Asserting >= 150 KB free on /flash ..."
-FREE_KB=$($MPR resume exec "
+FREE_RAW=$($MPR resume exec "
 import os
 st = os.statvfs('/flash')
 free_bytes = st[0] * st[3]
 print(free_bytes // 1024)
-" 2>/dev/null | grep -E '^[0-9]+$' | tail -1)
+" 2>&1 || true)
+FREE_KB=$(echo "$FREE_RAW" | tr -d '\r' | grep -E '^[0-9]+$' | tail -1 || true)
 
 if [[ -z "$FREE_KB" ]]; then
-    echo "error: could not read statvfs from device" >&2
+    echo "error: could not read statvfs from device (raw output: $FREE_RAW)" >&2
     exit 1
 fi
 
