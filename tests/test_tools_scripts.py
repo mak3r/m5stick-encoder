@@ -215,3 +215,24 @@ def test_upload_smoke_test_checks_importerror():
     with open(UPLOAD_SH) as f:
         content = f.read()
     assert "ImportError" in content
+
+
+def test_upload_no_recursive_cp_for_hw_or_encoder():
+    """upload.sh must not use cp -r for hw/ or encoder/ — that nests the dir."""
+    with open(UPLOAD_SH) as f:
+        content = f.read()
+    # cp -r with src/encoder or src/hw would reproduce the nesting bug
+    assert "cp -r" not in content or (
+        "src/encoder" not in content.split("cp -r")[1].split("\n")[0]
+        and "src/hw" not in content.split("cp -r")[1].split("\n")[0]
+    ), "upload.sh must not use 'cp -r' for encoder/ or hw/"
+
+
+def test_upload_uses_per_file_loops_for_hw_and_encoder():
+    """upload.sh must copy hw/ and encoder/ with per-file loops, not cp -r."""
+    with open(UPLOAD_SH) as f:
+        content = f.read()
+    assert 'src/encoder/*.py' in content, "upload.sh must glob encoder/*.py"
+    assert 'src/hw/*.py' in content, "upload.sh must glob hw/*.py"
+    assert ':encoder/$(basename' in content, "upload.sh must use basename for encoder dest"
+    assert ':hw/$(basename' in content, "upload.sh must use basename for hw dest"

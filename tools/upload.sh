@@ -45,8 +45,14 @@ $MPR cp "$REPO_ROOT/vendor/collections/abc.py" :lib/collections/abc.py
 
 # Deploy app code by explicit subtree, excluding test-only files.
 echo "==> Uploading app code ..."
-$MPR cp -r "$REPO_ROOT/src/encoder" :encoder
-$MPR cp -r "$REPO_ROOT/src/hw" :hw
+$MPR mkdir :encoder 2>/dev/null || true
+for f in "$REPO_ROOT"/src/encoder/*.py; do
+    $MPR cp "$f" ":encoder/$(basename "$f")"
+done
+$MPR mkdir :hw 2>/dev/null || true
+for f in "$REPO_ROOT"/src/hw/*.py; do
+    $MPR cp "$f" ":hw/$(basename "$f")"
+done
 
 # Upload ui/ files individually so display_mock.py is excluded.
 $MPR mkdir :ui 2>/dev/null || true
