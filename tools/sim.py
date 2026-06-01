@@ -50,7 +50,7 @@ AUTO_REPEAT_GUARD_MS = 50
 # Map the abstract color ints from screen.render to concrete RGB tuples.
 # BG=0 black, FG=1 white (panel reads in ambient light), ACCENT=2 amber/
 # orange to evoke the M5StickC's amber PWR LED for the focused selection,
-# CURSOR=3 bright green (matches 0x07E0 on device) for the wheel cursor.
+# CURSOR=3 bright green (matches 0x00FF00 / RGB888 on device) for the wheel cursor.
 COLOR_MAP: dict[int, str] = {
     0: "#000000",
     1: "#ffffff",
