@@ -17,16 +17,31 @@ def test_initial_state_defaults():
     assert s.out_buf == ""
 
 
-def test_btn_a_from_zero_wraps_to_25():
-    app = make_app(wheel_idx=0)
+def test_btn_a_appends_letter_and_transforms():
+    app = make_app(wheel_idx=0)  # A
     changed = app.handle(ButtonEvent.BTN_A_PRESS)
+    assert changed is True
+    assert app.state.in_buf == "A"
+    assert app.state.out_buf == "N"
+
+
+def test_btn_a_appends_to_existing_buf():
+    app = make_app(wheel_idx=5)  # F
+    app.handle(ButtonEvent.BTN_A_PRESS)
+    assert app.state.in_buf == "F"
+    assert app.state.out_buf == "S"
+
+
+def test_pwr_short_from_zero_wraps_to_25():
+    app = make_app(wheel_idx=0)
+    changed = app.handle(ButtonEvent.PWR_SHORT)
     assert changed is True
     assert app.state.wheel_idx == 25
 
 
-def test_btn_a_decrements_within_range():
+def test_pwr_short_decrements_within_range():
     app = make_app(wheel_idx=5)
-    app.handle(ButtonEvent.BTN_A_PRESS)
+    app.handle(ButtonEvent.PWR_SHORT)
     assert app.state.wheel_idx == 4
 
 
@@ -44,32 +59,32 @@ def test_btn_b_increments_within_range():
 
 
 def _type_word(app: App, word: str) -> None:
-    """Drive the wheel to each letter via BTN_B then commit with PWR_SHORT."""
+    """Drive the wheel to each letter via BTN_B then commit with BTN_A."""
     for ch in word:
         target = ord(ch) - ord("A")
         while app.state.wheel_idx != target:
             app.handle(ButtonEvent.BTN_B_PRESS)
-        app.handle(ButtonEvent.PWR_SHORT)
+        app.handle(ButtonEvent.BTN_A_PRESS)
 
 
-def test_pwr_short_enc_appends_plain_and_cipher():
+def test_btn_a_enc_appends_plain_and_cipher():
     app = make_app()
     _type_word(app, "HELLO")
     assert app.state.in_buf == "HELLO"
     assert app.state.out_buf == "URYYB"
 
 
-def test_pwr_short_single_letter_enc():
+def test_btn_a_single_letter_enc():
     app = make_app(wheel_idx=0)  # A
-    changed = app.handle(ButtonEvent.PWR_SHORT)
+    changed = app.handle(ButtonEvent.BTN_A_PRESS)
     assert changed is True
     assert app.state.in_buf == "A"
     assert app.state.out_buf == "N"
 
 
-def test_pwr_short_dec_appends_cipher_and_plain():
+def test_btn_a_dec_appends_cipher_and_plain():
     app = make_app(mode="DEC", wheel_idx=13)  # N → A under rot13
-    changed = app.handle(ButtonEvent.PWR_SHORT)
+    changed = app.handle(ButtonEvent.BTN_A_PRESS)
     assert changed is True
     assert app.state.in_buf == "N"
     assert app.state.out_buf == "A"
@@ -178,10 +193,10 @@ def test_app_is_cipher_agnostic_via_protocol_stub():
 
     state = State(algorithm="fixed")
     app = App(state, {"fixed": FixedCipher()})
-    app.handle(ButtonEvent.PWR_SHORT)
+    app.handle(ButtonEvent.BTN_A_PRESS)
     assert app.state.in_buf == "A"
     assert app.state.out_buf == "X"
-    app.handle(ButtonEvent.PWR_SHORT)
+    app.handle(ButtonEvent.BTN_A_PRESS)
     assert app.state.in_buf == "AA"
     assert app.state.out_buf == "XX"
     # Switch to DEC: PWR_LONG swaps out_buf into in_buf and re-derives via
@@ -190,6 +205,6 @@ def test_app_is_cipher_agnostic_via_protocol_stub():
     assert app.state.mode == "DEC"
     assert app.state.in_buf == "XX"
     assert app.state.out_buf == "YY"
-    app.handle(ButtonEvent.PWR_SHORT)
+    app.handle(ButtonEvent.BTN_A_PRESS)
     assert app.state.in_buf == "XXA"
     assert app.state.out_buf == "YYY"

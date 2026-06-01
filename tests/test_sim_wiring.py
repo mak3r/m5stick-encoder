@@ -54,14 +54,20 @@ def test_btn_b_key_advances_wheel(stack):
     assert renders == [1]
 
 
-def test_bracket_keys_are_aliases(stack):
+def test_bracket_right_key_is_alias_for_btn_b(stack):
     adapter, app, _fsm, _clock, _renders = stack
     adapter.on_key_press("bracketright")
     adapter.on_key_release("bracketright")
+    assert app.state.wheel_idx == 1
+
+
+def test_bracket_left_key_appends_letter(stack):
+    adapter, app, _fsm, _clock, _renders = stack
+    # wheel_idx=0 → letter A
     adapter.on_key_press("bracketleft")
     adapter.on_key_release("bracketleft")
-    # +1 then -1 lands back on 0.
-    assert app.state.wheel_idx == 0
+    assert app.state.in_buf == "A"
+    assert app.state.out_buf == "N"
 
 
 def test_unknown_key_is_ignored(stack):
@@ -88,17 +94,27 @@ def test_held_key_does_not_repeat(stack):
     assert app.state.wheel_idx == 2
 
 
-def test_space_short_commits_letter_through_fsm(stack):
+def test_key_a_appends_letter_through_fsm(stack):
     adapter, app, _fsm, clock, _renders = stack
-    # Advance wheel to A->A; default state has wheel_idx=0, mode=ENC.
+    # wheel_idx=0 → letter A; BTN_A emits immediately on press.
+    adapter.on_key_press("a")
+    adapter.on_key_release("a")
+    assert app.state.in_buf == "A"
+    assert app.state.out_buf == "N"
+
+
+def test_space_short_scrolls_backward_through_fsm(stack):
+    adapter, app, _fsm, clock, _renders = stack
+    # Advance wheel to position 3 first, then space-tap should decrement it.
+    app.state.wheel_idx = 3
     adapter.on_key_press("space")
     clock.advance(50)
     adapter.on_key_release("space")
     # Short press resolves on the next tick after the double window expires.
     clock.advance(DOUBLE_WINDOW_MS + 1)
     adapter.tick()
-    assert app.state.in_buf == "A"
-    assert app.state.out_buf == "N"
+    assert app.state.wheel_idx == 2
+    assert app.state.in_buf == ""
 
 
 def test_space_long_press_toggles_mode(stack):
@@ -243,11 +259,12 @@ def test_long_hold_survives_autorepeat():
     assert app.state.mode == "DEC"
 
 
-def test_real_short_tap_still_commits_letter():
+def test_real_short_tap_still_scrolls_backward():
     """A genuine tap (no auto-repeat) should still produce a PWR_SHORT
     after the guard window + double window have both expired."""
     adapter, app, _fsm, clock, sched, _renders = _build_recording_stack()
 
+    app.state.wheel_idx = 5
     adapter.on_key_press("space")
     clock.advance(20)
     adapter.on_key_release("space")
@@ -261,7 +278,8 @@ def test_real_short_tap_still_commits_letter():
     adapter.tick()
 
     assert ButtonEvent.PWR_SHORT in app.events
-    assert app.state.in_buf == "A"
+    assert app.state.wheel_idx == 4
+    assert app.state.in_buf == ""
 
 
 def test_real_double_tap_outside_guard_window():
@@ -328,6 +346,8 @@ def test_existing_immediate_release_behavior_preserved(stack):
     """With no scheduler injected, the adapter behaves exactly as it did
     before #27: RELEASE reaches the FSM immediately, no deferral."""
     adapter, app, _fsm, clock, _renders = stack
+    # Space tap now scrolls backward; seed wheel_idx so the change is visible.
+    app.state.wheel_idx = 5
     adapter.on_key_press("space")
     clock.advance(20)
     adapter.on_key_release("space")
@@ -335,4 +355,5 @@ def test_existing_immediate_release_behavior_preserved(stack):
     # have the release.
     clock.advance(DOUBLE_WINDOW_MS + 1)
     adapter.tick()
-    assert app.state.in_buf == "A"
+    assert app.state.wheel_idx == 4
+    assert app.state.in_buf == ""
