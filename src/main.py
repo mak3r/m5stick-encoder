@@ -15,6 +15,7 @@ from ui.app import App
 from ui.buttons import ButtonFSM
 from ui.events import Button, Edge
 import ui.screen as screen
+from ui.sleep import SleepManager
 from ui.state import State
 
 # GPIO wiring on M5StickC PLUS.
@@ -22,6 +23,11 @@ _PIN_BTN_A = 37   # side button A (active-low, internal pull-up)
 _PIN_BTN_B = 39   # side button B (active-low, internal pull-up)
 
 _BATT_REFRESH_MS = 10_000  # refresh battery readout every ~10 s
+
+# AXP192 register for power-off (bit 7 = POWEROFF).
+_AXP_ADDR = 0x34
+_REG_AXP_POWEROFF = 0x32
+_AXP_POWEROFF_BIT = 1 << 7
 
 
 def _time_ms() -> int:
@@ -43,6 +49,16 @@ def _read_battery(axp_bus) -> str:
         return "?"
 
 
+def _axp_power_off(axp_bus) -> None:
+    """Write the AXP192 power-off bit; device shuts down immediately."""
+    try:
+        current = axp_bus.readfrom_mem(_AXP_ADDR, _REG_AXP_POWEROFF, 1)[0]
+        axp_bus.writeto_mem(_AXP_ADDR, _REG_AXP_POWEROFF, bytes([current | _AXP_POWEROFF_BIT]))
+    except Exception:
+        import machine  # type: ignore[import]
+        machine.reset()
+
+
 def _run_loop(
     display,
     app: App,
@@ -52,11 +68,13 @@ def _run_loop(
     btn_b_pin,
     buzzer: Buzzer,
     axp_bus=None,
+    sleep_mgr: SleepManager | None = None,
 ) -> None:
     """Polling loop: drain button events, update state, render when dirty.
 
     Extracted from main() so tests can inject stubs for all hardware.
     ``axp_bus`` is optional; when None battery reads return '?'.
+    ``sleep_mgr`` is optional; when None the idle-sleep feature is disabled.
     """
     last_batt_ms = _time_ms() - _BATT_REFRESH_MS  # force an immediate read
 
@@ -85,6 +103,10 @@ def _run_loop(
             if app.handle(event):
                 dirty = True
 
+        if dirty and sleep_mgr is not None:
+            sleep_mgr.poke()
+            display.wake()
+
         if time.ticks_diff(now, last_batt_ms) >= _BATT_REFRESH_MS:
             app.state.battery_pct = _read_battery(axp_bus) if axp_bus is not None else "?"
             last_batt_ms = now
@@ -92,6 +114,14 @@ def _run_loop(
 
         if dirty:
             screen.render(display, app.state)
+
+        if sleep_mgr is not None:
+            signal = sleep_mgr.tick()
+            if signal == "lcd_sleep":
+                display.sleep()
+            elif signal == "power_off":
+                display.sleep()
+                _axp_power_off(axp_bus)
 
         time.sleep_ms(20)
 
@@ -125,8 +155,9 @@ def main() -> None:
         ciphers = {name: cls() for name, cls in ALGORITHMS.items()}
         app = App(state, ciphers)
         fsm = ButtonFSM(_time_ms)
+        sleep_mgr = SleepManager(_time_ms)
 
-        _run_loop(display, app, fsm, pwr, btn_a, btn_b, buzzer, axp_bus=axp_bus)
+        _run_loop(display, app, fsm, pwr, btn_a, btn_b, buzzer, axp_bus=axp_bus, sleep_mgr=sleep_mgr)
 
     except Exception as exc:
         print("CRASH:", exc)

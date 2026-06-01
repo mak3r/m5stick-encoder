@@ -38,6 +38,16 @@ class ShowCall:
 
 
 @dataclass
+class SleepCall:
+    pass
+
+
+@dataclass
+class WakeCall:
+    pass
+
+
+@dataclass
 class DisplayMock:
     width: int = 240
     height: int = 135
@@ -54,6 +64,12 @@ class DisplayMock:
 
     def show(self) -> None:
         self.calls.append(ShowCall())
+
+    def sleep(self) -> None:
+        self.calls.append(SleepCall())
+
+    def wake(self) -> None:
+        self.calls.append(WakeCall())
 
     def texts(self) -> list[TextCall]:
         return [c for c in self.calls if isinstance(c, TextCall)]
