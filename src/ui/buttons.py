@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from collections.abc import Callable
 
 from ui.events import Button, ButtonEvent, Edge
