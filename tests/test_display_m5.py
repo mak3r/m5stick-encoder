@@ -250,19 +250,29 @@ def test_expected_board_constant_defined(source):
 
 
 # ---------------------------------------------------------------------------
-# sleep() / wake() use UIFlow 2 native LCD API, not setBrightness
+# sleep() / wake() use UIFlow 2.4.5 powerSave API, not setBrightness or sleep/wakeup
 
 
-def test_sleep_calls_M5_Lcd_sleep(source):
-    """sleep() must call M5.Lcd.sleep() for hardware low-power mode."""
-    assert "M5.Lcd.sleep()" in source, "sleep() must use M5.Lcd.sleep()"
+def test_sleep_calls_powerSaveOn(source):
+    """sleep() must call M5.Lcd.powerSaveOn() — the actual UIFlow 2.4.5 display-sleep API."""
+    assert "M5.Lcd.powerSaveOn()" in source, "sleep() must use M5.Lcd.powerSaveOn()"
 
 
-def test_wake_calls_M5_Lcd_wakeup(source):
-    """wake() must call M5.Lcd.wakeup() to restore the panel."""
-    assert "M5.Lcd.wakeup()" in source, "wake() must use M5.Lcd.wakeup()"
+def test_wake_calls_powerSaveOff(source):
+    """wake() must call M5.Lcd.powerSaveOff() to restore the panel."""
+    assert "M5.Lcd.powerSaveOff()" in source, "wake() must use M5.Lcd.powerSaveOff()"
 
 
 def test_sleep_does_not_use_setBrightness(source):
     """setBrightness is not reliable on AXP192 LDO3 — must not be used."""
-    assert "setBrightness" not in source, "setBrightness must be replaced by M5.Lcd.sleep/wakeup"
+    assert "setBrightness" not in source, "setBrightness must be replaced by M5.Lcd.powerSaveOn/Off"
+
+
+def test_sleep_does_not_use_M5_Lcd_sleep(source):
+    """M5.Lcd.sleep() does not exist on UIFlow 2.4.5 — must not be called."""
+    assert "M5.Lcd.sleep()" not in source, "M5.Lcd.sleep() causes AttributeError on device"
+
+
+def test_wake_does_not_use_M5_Lcd_wakeup(source):
+    """M5.Lcd.wakeup() does not exist on UIFlow 2.4.5 — must not be called."""
+    assert "M5.Lcd.wakeup()" not in source, "M5.Lcd.wakeup() causes AttributeError on device"

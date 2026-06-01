@@ -83,8 +83,8 @@ class M5Display:
 
     def sleep(self) -> None:
         """Put panel and backlight into low-power mode."""
-        M5.Lcd.sleep()
+        M5.Lcd.powerSaveOn()
 
     def wake(self) -> None:
         """Restore panel and backlight from low-power mode."""
-        M5.Lcd.wakeup()
+        M5.Lcd.powerSaveOff()
