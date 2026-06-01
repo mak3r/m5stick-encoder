@@ -207,10 +207,144 @@ def test_btn_b_long_same_direction_as_btn_b_press():
     assert app_press.state.wheel_idx == app_long.state.wheel_idx
 
 
-def test_pwr_double_and_pwr_long_are_unhandled():
+def test_pwr_double_cycles_algorithm():
     app = make_app()
-    assert app.handle(ButtonEvent.PWR_DOUBLE) is False
-    assert app.handle(ButtonEvent.PWR_LONG) is False
+    assert app.state.algorithm == "rot13"
+    changed = app.handle(ButtonEvent.PWR_DOUBLE)
+    assert changed is True
+    assert app.state.algorithm == "keyword"
+
+
+def test_pwr_double_clears_buffers():
+    app = make_app()
+    app.handle(ButtonEvent.BTN_A_PRESS)  # adds A → N
+    assert app.state.in_buf == "A"
+    app.handle(ButtonEvent.PWR_DOUBLE)
+    assert app.state.in_buf == ""
+    assert app.state.out_buf == ""
+
+
+def test_pwr_long_is_noop_when_not_keyword():
+    app = make_app()
+    assert app.state.algorithm == "rot13"
+    changed = app.handle(ButtonEvent.PWR_LONG)
+    assert changed is False
+    assert app.state.editing_key is False
+
+
+def test_pwr_long_enters_key_edit_when_keyword():
+    from encoder.keyword import KeywordCipher
+
+    state = State(algorithm="keyword")
+    app = App(state, {"keyword": KeywordCipher()})
+    changed = app.handle(ButtonEvent.PWR_LONG)
+    assert changed is True
+    assert app.state.editing_key is True
+
+
+def test_pwr_long_preloads_current_key_into_key_buf():
+    from encoder.keyword import KeywordCipher
+
+    state = State(algorithm="keyword", cipher_key="SECRET")
+    app = App(state, {"keyword": KeywordCipher("SECRET")})
+    app.handle(ButtonEvent.PWR_LONG)
+    assert app.state.key_buf == "SECRET"
+
+
+def _make_keyword_app(key="KEY", on_save_key=None, **state_kwargs):
+    from encoder.keyword import KeywordCipher
+
+    state = State(algorithm="keyword", cipher_key=key, **state_kwargs)
+    return App(state, {"keyword": KeywordCipher(key)}, on_save_key=on_save_key)
+
+
+def test_key_edit_a_press_appends_letter():
+    app = _make_keyword_app()
+    app.handle(ButtonEvent.PWR_LONG)  # enter edit mode, key_buf = "KEY"
+    app.state.key_buf = ""  # start fresh
+    app.state.wheel_idx = 0  # A
+    changed = app.handle(ButtonEvent.BTN_A_PRESS)
+    assert changed is True
+    assert app.state.key_buf == "A"
+
+
+def test_key_edit_a_double_deletes_last():
+    app = _make_keyword_app()
+    app.handle(ButtonEvent.PWR_LONG)
+    app.state.key_buf = "AB"
+    app.handle(ButtonEvent.BTN_A_DOUBLE)
+    assert app.state.key_buf == "A"
+
+
+def test_key_edit_a_double_noop_on_empty():
+    app = _make_keyword_app()
+    app.handle(ButtonEvent.PWR_LONG)
+    app.state.key_buf = ""
+    changed = app.handle(ButtonEvent.BTN_A_DOUBLE)
+    assert changed is False
+    assert app.state.key_buf == ""
+
+
+def test_key_edit_a_long_confirms_and_exits():
+    saved = []
+    app = _make_keyword_app(on_save_key=saved.append)
+    app.handle(ButtonEvent.PWR_LONG)
+    app.state.key_buf = "SECRET"
+    app.handle(ButtonEvent.BTN_A_LONG)
+    assert app.state.editing_key is False
+    assert app.state.cipher_key == "SECRET"
+    assert app.state.key_buf == ""
+    assert saved == ["SECRET"]
+
+
+def test_key_edit_a_long_empty_buf_keeps_old_key():
+    app = _make_keyword_app(key="HELLO")
+    app.handle(ButtonEvent.PWR_LONG)
+    app.state.key_buf = ""
+    app.handle(ButtonEvent.BTN_A_LONG)
+    assert app.state.cipher_key == "HELLO"
+
+
+def test_key_edit_pwr_long_cancels():
+    app = _make_keyword_app()
+    app.handle(ButtonEvent.PWR_LONG)
+    app.state.key_buf = "PARTIAL"
+    changed = app.handle(ButtonEvent.PWR_LONG)
+    assert changed is True
+    assert app.state.editing_key is False
+    assert app.state.key_buf == ""
+    assert app.state.cipher_key == "KEY"  # unchanged
+
+
+def test_key_edit_wheel_still_works():
+    app = _make_keyword_app()
+    app.handle(ButtonEvent.PWR_LONG)
+    app.state.wheel_idx = 5
+    app.handle(ButtonEvent.BTN_B_PRESS)
+    assert app.state.wheel_idx == 4
+    app.handle(ButtonEvent.PWR_SHORT)
+    assert app.state.wheel_idx == 5
+
+
+def test_pwr_double_cycles_rot13_to_keyword_to_rot13():
+    app = make_app()
+    assert app.state.algorithm == "rot13"
+    app.handle(ButtonEvent.PWR_DOUBLE)
+    assert app.state.algorithm == "keyword"
+    app.handle(ButtonEvent.PWR_DOUBLE)
+    assert app.state.algorithm == "rot13"
+
+
+def test_key_edit_updates_cipher_instance():
+    from encoder.keyword import KeywordCipher
+
+    kw = KeywordCipher("OLD")
+    state = State(algorithm="keyword", cipher_key="OLD")
+    app = App(state, {"keyword": kw})
+    app.handle(ButtonEvent.PWR_LONG)
+    app.state.key_buf = "NEW"
+    app.handle(ButtonEvent.BTN_A_LONG)
+    assert kw.key == "NEW"
 
 
 def test_app_is_cipher_agnostic_via_protocol_stub():

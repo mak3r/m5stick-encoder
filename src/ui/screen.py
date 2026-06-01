@@ -50,22 +50,31 @@ def _tail(buf: str, n: int = LINE_CHARS) -> str:
     return buf[-n:] if len(buf) > n else buf
 
 
-def _focus_letters(state: State) -> tuple[str, str]:
+def _focus_letters(
+    state: State, ciphers: dict | None = None
+) -> tuple[str, str]:
     """Return (left, right) for the focused-letter mapping row.
 
-    ENC mode shows plain→cipher; DEC mode shows cipher→plain. The cipher
-    is resolved through ``encoder.ALGORITHMS``; if the algorithm is not
-    registered the source letter is shown on both sides as a fallback so
-    rendering never raises.
+    ENC mode shows plain→cipher; DEC mode shows cipher→plain. When
+    ``ciphers`` is provided the live instance is used (so key changes in
+    the keyword cipher reflect immediately). Falls back to constructing a
+    fresh instance from ``ALGORITHMS`` so rendering is always correct.
     """
     from encoder import ALGORITHMS  # local import keeps ui.* host-portable
 
     src = ALPHABET[state.wheel_idx]
-    cls = ALGORITHMS.get(state.algorithm)
-    if cls is None:
-        return src, src
-    cipher = cls()
-    mapped = cipher.encode(src) if state.mode == "ENC" else cipher.decode(src)
+    cipher = None
+    if ciphers is not None:
+        cipher = ciphers.get(state.algorithm)
+    if cipher is None:
+        cls = ALGORITHMS.get(state.algorithm)
+        if cls is None:
+            return src, src
+        cipher = cls()
+    try:
+        mapped = cipher.encode(src) if state.mode == "ENC" else cipher.decode(src)
+    except ValueError:
+        mapped = src
     return src, mapped
 
 
@@ -88,13 +97,18 @@ def render_splash(display: Display, battery_pct: str = "?") -> None:
     display.show()
 
 
-def render(display: Display, state: State) -> None:
+def render(display: Display, state: State, ciphers: dict | None = None) -> None:
+    if state.editing_key:
+        _render_key_edit(display, state)
+        return
+
     display.fill(BG)
 
-    # Top bar: mode tag, algorithm name, word-length counter, battery.
+    # Top bar: mode tag, algorithm name (+ key hint for keyword), counter, battery.
     tag = f"[{state.mode}]"
     display.text(tag, 2, TOP_BAR_Y, ACCENT, scale=1)
-    display.text(state.algorithm, 50, TOP_BAR_Y, FG, scale=1)
+    algo_str = f"keyword {state.cipher_key}" if state.algorithm == "keyword" else state.algorithm
+    display.text(algo_str, 50, TOP_BAR_Y, FG, scale=1)
     counter = f"{min(len(state.in_buf), LINE_CHARS)}/{LINE_CHARS}"
     display.text(counter, WIDTH - 12 * GLYPH_W, TOP_BAR_Y, FG, scale=1)
     # Battery: right-aligned; "B:100%" is the widest case (6 chars × 8px).
@@ -107,7 +121,7 @@ def render(display: Display, state: State) -> None:
         display.text(ch, _wheel_x(i), WHEEL_Y, color, scale=1)
 
     # Focused-letter mapping row at scale 3 — centered.
-    left, right = _focus_letters(state)
+    left, right = _focus_letters(state, ciphers)
     arrow = ">"  # plain ASCII so the host font works without unicode.
     focus_str = f"{left} {arrow} {right}"
     focus_w = len(focus_str) * GLYPH_W * FOCUS_SCALE
@@ -120,5 +134,29 @@ def render(display: Display, state: State) -> None:
 
     # Footer: button legend.
     display.text("A:next  B:add  PWR:mode", 2, FOOTER_Y, FG, scale=1)
+
+    display.show()
+
+
+def _render_key_edit(display: Display, state: State) -> None:
+    display.fill(BG)
+
+    display.text("[KEY EDIT]", 2, TOP_BAR_Y, ACCENT, scale=1)
+
+    # Cipher wheel: same layout as main screen.
+    for i, ch in enumerate(ALPHABET):
+        color = CURSOR if i == state.wheel_idx else FG
+        display.text(ch, _wheel_x(i), WHEEL_Y, color, scale=1)
+
+    # Current key being built, large and centered.
+    key_display = state.key_buf if state.key_buf else "_"
+    key_w = len(key_display) * GLYPH_W * FOCUS_SCALE
+    key_x = max(0, (WIDTH - key_w) // 2)
+    display.text(key_display, key_x, FOCUS_Y, ACCENT, scale=FOCUS_SCALE)
+
+    display.text(f"key: {_tail(state.key_buf)}", 2, IN_Y, FG, scale=1)
+
+    # Footer: key-edit button legend.
+    display.text("A:add  AA:del  AL:save", 2, FOOTER_Y, FG, scale=1)
 
     display.show()

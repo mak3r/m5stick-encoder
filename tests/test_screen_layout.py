@@ -167,3 +167,45 @@ def test_text_call_default_scale_is_one(mock: DisplayMock):
     mock.text("X", 0, 0, 1)
     call: TextCall = mock.texts()[0]
     assert call.scale == 1
+
+
+def test_keyword_top_bar_shows_key_hint(mock: DisplayMock):
+    from ui.state import State
+
+    render(mock, State(algorithm="keyword", cipher_key="SECRET"))
+    assert any("keyword SECRET" in c.s for c in mock.texts())
+
+
+def test_rot13_top_bar_shows_algorithm_name(mock: DisplayMock):
+    render(mock, State(algorithm="rot13"))
+    assert any(c.s == "rot13" for c in mock.texts())
+    assert not any("keyword" in c.s for c in mock.texts())
+
+
+def test_key_edit_renders_key_edit_header(mock: DisplayMock):
+    from ui.state import State
+
+    render(mock, State(algorithm="keyword", editing_key=True, key_buf="AB"))
+    assert any("[KEY EDIT]" in c.s for c in mock.texts())
+
+
+def test_key_edit_renders_key_buf_large(mock: DisplayMock):
+    from ui.state import State
+
+    render(mock, State(algorithm="keyword", editing_key=True, key_buf="AB"))
+    big = [c for c in mock.texts() if c.scale >= 2]
+    assert any("AB" in c.s for c in big)
+
+
+def test_key_edit_renders_footer_legend(mock: DisplayMock):
+    from ui.state import State
+
+    render(mock, State(algorithm="keyword", editing_key=True, key_buf="X"))
+    assert any("A:add" in c.s for c in mock.texts())
+
+
+def test_key_edit_calls_show(mock: DisplayMock):
+    from ui.state import State
+
+    render(mock, State(algorithm="keyword", editing_key=True))
+    assert isinstance(mock.calls[-1], ShowCall)

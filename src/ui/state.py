@@ -4,7 +4,7 @@ from typing import Literal
 
 @dataclass
 class State:
-    """Phase 1 UI state. Mutated in place by ``App.handle()`` (issue #8).
+    """UI state. Mutated in place by ``App.handle()``.
 
     - ``mode``: ENC encodes plain→cipher; DEC decodes cipher→plain.
     - ``algorithm``: key into ``encoder.ALGORITHMS``.
@@ -12,6 +12,9 @@ class State:
       focused source letter on the cipher wheel.
     - ``in_buf`` / ``out_buf``: source and result strings; ``screen.render``
       shows only the trailing 16 chars when they grow past the line width.
+    - ``cipher_key``: active keyword for the keyword cipher.
+    - ``key_buf``: key being assembled during key-edit mode.
+    - ``editing_key``: True while key-edit mode is active.
     """
 
     mode: Literal["ENC", "DEC"] = "ENC"
@@ -20,3 +23,6 @@ class State:
     in_buf: str = ""
     out_buf: str = ""
     battery_pct: str = "?"
+    cipher_key: str = "KEY"
+    key_buf: str = ""
+    editing_key: bool = False
