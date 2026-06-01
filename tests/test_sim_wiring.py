@@ -15,13 +15,33 @@ _TOOLS = os.path.join(_REPO_ROOT, "tools")
 if _TOOLS not in sys.path:
     sys.path.insert(0, _TOOLS)
 
-from sim import AUTO_REPEAT_GUARD_MS, KeyboardAdapter  # noqa: E402
+from sim import AUTO_REPEAT_GUARD_MS, COLOR_MAP, KeyboardAdapter  # noqa: E402
 
 from encoder.rot13 import Rot13Cipher  # noqa: E402
 from ui.app import App  # noqa: E402
 from ui.buttons import DOUBLE_WINDOW_MS, LONG_PRESS_MS, ButtonFSM  # noqa: E402
 from ui.events import ButtonEvent  # noqa: E402
 from ui.state import State  # noqa: E402
+
+# ---------------------------------------------------------------------------
+# COLOR_MAP tests — ensure cursor color is present and visually distinct
+
+
+def test_color_map_has_cursor_entry():
+    assert 3 in COLOR_MAP, "COLOR_MAP must define color 3 (cursor green)"
+
+
+def test_color_map_cursor_is_green():
+    # Cursor must be a visibly green hex color (green channel dominant).
+    rgb = COLOR_MAP[3].lstrip("#")
+    r = int(rgb[0:2], 16)
+    g = int(rgb[2:4], 16)
+    b = int(rgb[4:6], 16)
+    assert g > r and g > b, "cursor color must be green (green channel dominant)"
+
+
+def test_color_map_cursor_differs_from_fg():
+    assert COLOR_MAP[3] != COLOR_MAP[1], "cursor must be distinct from foreground (white)"
 
 
 class FakeClock:

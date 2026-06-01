@@ -49,11 +49,13 @@ AUTO_REPEAT_GUARD_MS = 50
 
 # Map the abstract color ints from screen.render to concrete RGB tuples.
 # BG=0 black, FG=1 white (panel reads in ambient light), ACCENT=2 amber/
-# orange to evoke the M5StickC's amber PWR LED for the focused selection.
+# orange to evoke the M5StickC's amber PWR LED for the focused selection,
+# CURSOR=3 bright green (matches 0x07E0 on device) for the wheel cursor.
 COLOR_MAP: dict[int, str] = {
     0: "#000000",
     1: "#ffffff",
     2: "#ffb000",
+    3: "#00ff00",
 }
 
 # Keyboard symbols mapped to logical buttons. Lowercase is canonical; the
