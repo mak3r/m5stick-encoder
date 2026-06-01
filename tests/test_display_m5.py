@@ -112,25 +112,27 @@ def _dict_const(tree: ast.Module, name: str) -> dict | None:
 def test_palette_black(tree):
     p = _dict_const(tree, "_PALETTE")
     assert p is not None, "_PALETTE dict not found"
-    assert p.get(0) == 0x0000, "color 0 must be black (0x0000)"
+    assert p.get(0) == 0x000000, "color 0 must be black (0x000000)"
 
 
 def test_palette_white(tree):
     p = _dict_const(tree, "_PALETTE")
     assert p is not None
-    assert p.get(1) == 0xFFFF, "color 1 must be white (0xFFFF)"
+    assert p.get(1) == 0xFFFFFF, "color 1 must be white (0xFFFFFF)"
 
 
 def test_palette_amber(tree):
     p = _dict_const(tree, "_PALETTE")
     assert p is not None
-    assert p.get(2) == 0xFB00, "color 2 must be amber (0xFB00)"
+    assert p.get(2) == 0xFFB000, "color 2 must be amber (0xFFB000)"
 
 
 def test_palette_cursor_green(tree):
     p = _dict_const(tree, "_PALETTE")
     assert p is not None
-    assert p.get(3) == 0x07E0, "color 3 must be bright green (0x07E0)"
+    # UIFlow 2 M5.Lcd uses 24-bit RGB888; 0x00FF00 = pure green on device.
+    # The former RGB565 value 0x07E0 was interpreted as blue (B=0xE0=224).
+    assert p.get(3) == 0x00FF00, "color 3 must be bright green (0x00FF00)"
 
 
 # ---------------------------------------------------------------------------

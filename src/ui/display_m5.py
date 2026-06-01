@@ -9,15 +9,19 @@ longer exposed; the board init configures the panel and exposes it via
 Logical dimensions: width=240, height=135 (landscape).
 
 Color convention (matches ``screen.py``):
-  0 = background (black)   → 0x0000
-  1 = foreground (white)   → 0xFFFF
-  2 = accent (amber)       → 0xFB00
-  3 = cursor (bright green) → 0x07E0
+  0 = background (black)   → 0x000000
+  1 = foreground (white)   → 0xFFFFFF
+  2 = accent (amber)       → 0xFFB000
+  3 = cursor (bright green) → 0x00FF00
+
+UIFlow 2 M5.Lcd accepts 24-bit RGB888 color integers (0xRRGGBB), not
+16-bit RGB565.  The previous RGB565 value 0x07E0 was interpreted as
+RGB888 (R=0, G=7, B=224) which rendered blue on device.
 """
 
 import M5
 
-_PALETTE = {0: 0x0000, 1: 0xFFFF, 2: 0xFB00, 3: 0x07E0}
+_PALETTE = {0: 0x000000, 1: 0xFFFFFF, 2: 0xFFB000, 3: 0x00FF00}
 
 # UIFlow 2.4.5 on the M5StickC PLUS (ESP32-PICO-D4) emits:
 #   E (...) gpio: gpio_pullup_en(78): GPIO number error
