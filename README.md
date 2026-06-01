@@ -79,6 +79,36 @@ No device required.
 
 The project ships an empty `.venv/` policy: it's gitignored and rebuilt locally per the steps above. Global `pip` / `pipx` / `brew install` are intentionally off the allowlist for Claude Code subagents — the venv is the only sanctioned tool path so that automated work is reproducible and contained.
 
+## Runtime configuration
+
+An optional `config.json` file on the device filesystem (`:/config.json`) lets you tune runtime parameters without reflashing. The device always works without the file — missing keys fall back to compiled-in defaults.
+
+### Supported keys
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `btn_b_scroll_ms` | int | `300` | Interval (ms) between repeated scroll events while BTN B is held |
+| `btn_b_repeat_delay_ms` | int | `500` | How long (ms) BTN B must be held before auto-scroll begins |
+
+### Example
+
+```json
+{
+  "btn_b_scroll_ms": 200,
+  "btn_b_repeat_delay_ms": 400
+}
+```
+
+### Deploying config.json
+
+**Automatic (recommended):** Place `config.json` in the repo root before running `tools/upload.sh`. The upload script detects it and copies it to `:/config.json` on the device automatically.
+
+**Manual:** Copy a local file directly with mpremote:
+
+```bash
+mpremote connect /dev/tty.usbserial-XXXX resume cp config.json :/config.json
+```
+
 ## Personas
 
 Three Claude Code personas drive this project:
