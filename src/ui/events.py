@@ -17,6 +17,7 @@ class ButtonEvent(Enum):
     BTN_A_DOUBLE = "BTN_A_DOUBLE"
     BTN_A_LONG = "BTN_A_LONG"
     BTN_B_PRESS = "BTN_B_PRESS"
+    BTN_B_LONG = "BTN_B_LONG"
     PWR_SHORT = "PWR_SHORT"
     PWR_DOUBLE = "PWR_DOUBLE"
     PWR_LONG = "PWR_LONG"

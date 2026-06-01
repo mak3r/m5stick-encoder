@@ -185,6 +185,28 @@ def test_mutating_events_return_true():
     assert app.handle(ButtonEvent.BTN_A_LONG) is True
 
 
+def test_btn_b_long_decrements_wheel():
+    app = make_app(wheel_idx=5)
+    changed = app.handle(ButtonEvent.BTN_B_LONG)
+    assert changed is True
+    assert app.state.wheel_idx == 4
+
+
+def test_btn_b_long_from_zero_wraps_to_25():
+    app = make_app(wheel_idx=0)
+    changed = app.handle(ButtonEvent.BTN_B_LONG)
+    assert changed is True
+    assert app.state.wheel_idx == 25
+
+
+def test_btn_b_long_same_direction_as_btn_b_press():
+    app_press = make_app(wheel_idx=10)
+    app_long = make_app(wheel_idx=10)
+    app_press.handle(ButtonEvent.BTN_B_PRESS)
+    app_long.handle(ButtonEvent.BTN_B_LONG)
+    assert app_press.state.wheel_idx == app_long.state.wheel_idx
+
+
 def test_pwr_double_and_pwr_long_are_unhandled():
     app = make_app()
     assert app.handle(ButtonEvent.PWR_DOUBLE) is False

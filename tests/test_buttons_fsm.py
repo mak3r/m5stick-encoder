@@ -1,6 +1,13 @@
 import pytest
 
-from ui.buttons import DEBOUNCE_MS, DOUBLE_WINDOW_MS, LONG_PRESS_MS, ButtonFSM
+from ui.buttons import (
+    BTN_B_REPEAT_DELAY_MS,
+    BTN_B_SCROLL_MS,
+    DEBOUNCE_MS,
+    DOUBLE_WINDOW_MS,
+    LONG_PRESS_MS,
+    ButtonFSM,
+)
 from ui.events import Button, ButtonEvent, Edge
 
 
@@ -317,3 +324,77 @@ def test_pwr_and_btn_a_interleaved(fsm: ButtonFSM, clock: FakeClock):
     events = fsm.drain()
     assert ButtonEvent.BTN_A_PRESS in events
     assert ButtonEvent.PWR_SHORT in events
+
+
+# ---------------------------------------------------------------------------
+# BTN_B: long-press auto-scroll
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def fast_fsm(clock: FakeClock) -> ButtonFSM:
+    """FSM with shortened BtnB delays for readable test timings."""
+    return ButtonFSM(clock, btn_b_repeat_delay_ms=200, btn_b_scroll_ms=100)
+
+
+def test_btn_b_short_press_no_long_events(fast_fsm: ButtonFSM, clock: FakeClock):
+    fast_fsm.feed(Button.B, Edge.PRESS)
+    assert fast_fsm.drain() == [ButtonEvent.BTN_B_PRESS]
+    clock.advance(100)  # less than repeat delay
+    assert fast_fsm.drain() == []
+    fast_fsm.feed(Button.B, Edge.RELEASE)
+    assert fast_fsm.drain() == []
+
+
+def test_btn_b_long_press_emits_first_repeat_after_delay(fast_fsm: ButtonFSM, clock: FakeClock):
+    fast_fsm.feed(Button.B, Edge.PRESS)
+    fast_fsm.drain()  # consume BTN_B_PRESS
+    clock.advance(200)  # reach repeat delay
+    events = fast_fsm.drain()
+    assert events == [ButtonEvent.BTN_B_LONG]
+
+
+def test_btn_b_long_press_emits_multiple_repeats(fast_fsm: ButtonFSM, clock: FakeClock):
+    fast_fsm.feed(Button.B, Edge.PRESS)
+    fast_fsm.drain()  # consume BTN_B_PRESS
+    clock.advance(200)
+    fast_fsm.drain()  # first BTN_B_LONG
+    clock.advance(100)
+    assert fast_fsm.drain() == [ButtonEvent.BTN_B_LONG]
+    clock.advance(100)
+    assert fast_fsm.drain() == [ButtonEvent.BTN_B_LONG]
+
+
+def test_btn_b_long_press_stops_on_release(fast_fsm: ButtonFSM, clock: FakeClock):
+    fast_fsm.feed(Button.B, Edge.PRESS)
+    fast_fsm.drain()
+    clock.advance(200)
+    fast_fsm.drain()  # first BTN_B_LONG
+    fast_fsm.feed(Button.B, Edge.RELEASE)
+    clock.advance(100)
+    assert fast_fsm.drain() == []
+
+
+def test_btn_b_repeat_not_fired_before_delay(fast_fsm: ButtonFSM, clock: FakeClock):
+    fast_fsm.feed(Button.B, Edge.PRESS)
+    fast_fsm.drain()
+    clock.advance(199)  # one ms short of delay
+    assert fast_fsm.drain() == []
+    clock.advance(1)  # now at delay boundary
+    assert fast_fsm.drain() == [ButtonEvent.BTN_B_LONG]
+
+
+def test_btn_b_custom_scroll_interval(clock: FakeClock):
+    fsm = ButtonFSM(clock, btn_b_repeat_delay_ms=100, btn_b_scroll_ms=50)
+    fsm.feed(Button.B, Edge.PRESS)
+    fsm.drain()
+    clock.advance(100)
+    fsm.drain()  # first repeat
+    clock.advance(49)
+    assert fsm.drain() == []  # not yet
+    clock.advance(1)
+    assert fsm.drain() == [ButtonEvent.BTN_B_LONG]
+
+
+def test_btn_b_default_constants_are_accessible():
+    assert BTN_B_REPEAT_DELAY_MS == 500
+    assert BTN_B_SCROLL_MS == 300

@@ -41,6 +41,9 @@ class App:
         if event is ButtonEvent.BTN_B_PRESS:
             s.wheel_idx = (s.wheel_idx - 1) % 26
             return True
+        if event is ButtonEvent.BTN_B_LONG:
+            s.wheel_idx = (s.wheel_idx - 1) % 26
+            return True
         if event is ButtonEvent.PWR_SHORT:
             s.wheel_idx = (s.wheel_idx + 1) % 26
             return True
