@@ -95,6 +95,7 @@ if echo "$SMOKE_OUT" | grep -q "ImportError"; then
     exit 1
 fi
 echo "$SMOKE_OUT"
-echo "==> Resetting device ..."
-$MPR reset || true
-echo "==> Upload complete. Device is restarting with new code."
+echo "==> Upload complete."
+echo ""
+echo "Power-cycle the device to start the new code:"
+echo "  Hold the power button for 6 seconds until the screen goes dark, then press it once to boot."
