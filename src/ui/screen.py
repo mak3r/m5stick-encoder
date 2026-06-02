@@ -189,6 +189,11 @@ def _tail(buf: str, n: int = LINE_CHARS) -> str:
     return buf[-n:] if len(buf) > n else buf
 
 
+def _active_key(state: State) -> str:
+    """Return the saved key for the current algorithm."""
+    return state.caesar_key if state.algorithm == "caesar" else state.cipher_key
+
+
 def _focus_letters(
     state: State, ciphers: dict | None = None
 ) -> tuple[str, str]:
@@ -349,7 +354,7 @@ def _render_encode(
     algo_x = 2 + len(tag) * GLYPH_W * 2 + 4   # clear the 2× tag
     algo_y = TOP_BAR_Y + GLYPH_H // 2           # vertically centre vs the taller tag
     if state.algorithm != "rot13":
-        algo_str = f"{state.algorithm} {state.cipher_key[:5]}"
+        algo_str = f"{state.algorithm} {_active_key(state)[:5]}"
     else:
         algo_str = state.algorithm
     display.text(algo_str, algo_x, algo_y, FG, scale=1)

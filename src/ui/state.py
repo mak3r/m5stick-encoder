@@ -27,4 +27,5 @@ class State:
     out_buf: str = ""
     battery_pct: str = "?"
     cipher_key: str = "KEY"
+    caesar_key: str = "D"
     key_buf: str = ""

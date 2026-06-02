@@ -55,6 +55,45 @@ $MPR resume mkdir :/flash/libs/collections 2>/dev/null || true
 $MPR resume cp "$REPO_ROOT/vendor/collections/__init__.py" :/flash/libs/collections/__init__.py
 $MPR resume cp "$REPO_ROOT/vendor/collections/abc.py" :/flash/libs/collections/abc.py
 
+# Remove stale MicroPython bytecode BEFORE uploading .py files.
+# UIFlow 2 compiles .py → .mpy on first import and may store the compiled
+# file alongside the source (e.g. /flash/ui/key_store.mpy). MicroPython
+# prefers .mpy over .py when both exist, so a stale .mpy from an older
+# version of a file will shadow the freshly uploaded .py. Clearing them
+# first ensures the new source is always what gets loaded.
+echo "==> Clearing stale MicroPython bytecode (.mpy / __pycache__) ..."
+$MPR resume exec "
+import os
+
+def rm_bytecode(path):
+    try:
+        entries = os.listdir(path)
+    except OSError:
+        return
+    for name in entries:
+        full = path + '/' + name
+        if name.endswith('.mpy'):
+            try:
+                os.remove(full)
+                print('removed', full)
+            except OSError:
+                pass
+        elif name == '__pycache__':
+            try:
+                for sub in os.listdir(full):
+                    try:
+                        os.remove(full + '/' + sub)
+                    except OSError:
+                        pass
+                os.rmdir(full)
+                print('rmdir', full)
+            except OSError:
+                pass
+
+for d in ('/flash/encoder', '/flash/hw', '/flash/ui', '/flash'):
+    rm_bytecode(d)
+" 2>&1 || true
+
 # Deploy app code by explicit subtree, excluding test-only files.
 echo "==> Uploading app code ..."
 $MPR resume mkdir :/flash/encoder 2>/dev/null || true
@@ -97,8 +136,18 @@ echo "==> Setting boot_option=0 (app mode) ..."
 $MPR resume exec "import esp32; nvs = esp32.NVS('uiflow'); nvs.set_u8('boot_option', 0); nvs.commit()"
 
 # Smoke test: accept NotImplementedError (imports resolved) but fail on ImportError.
+# UIFlow 2 with `resume` keeps a live Python session, so app modules loaded by
+# UIFlow's startup code are cached in sys.modules.  Evict them first so the
+# freshly uploaded .py files are actually imported rather than the stale cached
+# versions.
 echo "==> Running smoke test (import main) ..."
-SMOKE_OUT=$($MPR resume exec "import main" 2>&1) || true
+SMOKE_OUT=$($MPR resume exec "
+import sys
+for _k in list(sys.modules.keys()):
+    if _k == 'main' or _k.startswith('ui') or _k.startswith('encoder') or _k.startswith('hw'):
+        del sys.modules[_k]
+import main
+" 2>&1) || true
 if echo "$SMOKE_OUT" | grep -q "ImportError"; then
     echo "error: smoke test raised ImportError:" >&2
     echo "$SMOKE_OUT" >&2

@@ -60,8 +60,9 @@ class App:
             s.algorithm = order[s.setup_idx]
             cipher = self.ciphers.get(s.algorithm)
             if hasattr(cipher, 'key'):
-                # Keyed cipher: enter key-entry screen, pre-fill saved key.
-                s.key_buf = s.cipher_key
+                # Keyed cipher: enter key-entry screen, pre-fill the saved key
+                # for this algorithm (each cipher keeps its own key field).
+                s.key_buf = s.caesar_key if s.algorithm == "caesar" else s.cipher_key
                 s.screen = "setup_key"
             else:
                 s.screen = "encode"
@@ -75,7 +76,13 @@ class App:
     def _handle_setup_key(self, event: ButtonEvent) -> bool:
         s = self.state
         if event is ButtonEvent.BTN_A_PRESS:
-            s.key_buf = s.key_buf + ALPHABET[s.wheel_idx]
+            cipher = self.ciphers.get(s.algorithm)
+            max_len = getattr(cipher, 'max_key_len', None)
+            if max_len and len(s.key_buf) >= max_len:
+                # At the key-length limit: replace the last char rather than append.
+                s.key_buf = s.key_buf[:-1] + ALPHABET[s.wheel_idx]
+            else:
+                s.key_buf = s.key_buf + ALPHABET[s.wheel_idx]
             return True
         if event is ButtonEvent.BTN_A_DOUBLE:
             if not s.key_buf:
@@ -83,8 +90,14 @@ class App:
             s.key_buf = s.key_buf[:-1]
             return True
         if event is ButtonEvent.BTN_A_LONG:
-            new_key = s.key_buf if s.key_buf else s.cipher_key
-            s.cipher_key = new_key
+            if s.algorithm == "caesar":
+                fallback = s.caesar_key
+                new_key = s.key_buf if s.key_buf else fallback
+                s.caesar_key = new_key
+            else:
+                fallback = s.cipher_key
+                new_key = s.key_buf if s.key_buf else fallback
+                s.cipher_key = new_key
             s.key_buf = ""
             s.screen = "encode"
             cipher = self.ciphers.get(s.algorithm)

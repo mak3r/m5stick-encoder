@@ -222,6 +222,22 @@ def test_rot13_top_bar_shows_algorithm_name(mock: DisplayMock):
     assert not any("keyword" in c.s for c in mock.texts())
 
 
+def test_caesar_top_bar_shows_key_hint(mock: DisplayMock):
+    render(mock, State(algorithm="caesar", caesar_key="D"))
+    assert any("caesar D" in c.s for c in mock.texts())
+
+
+def test_caesar_top_bar_updates_with_key(mock: DisplayMock):
+    render(mock, State(algorithm="caesar", caesar_key="F"))
+    assert any("caesar F" in c.s for c in mock.texts())
+
+
+def test_caesar_top_bar_does_not_show_cipher_key(mock: DisplayMock):
+    # cipher_key belongs to keyword; it must not leak into the caesar top bar.
+    render(mock, State(algorithm="caesar", caesar_key="D", cipher_key="ZEBRA"))
+    assert not any("ZEBRA" in c.s for c in mock.texts())
+
+
 def test_key_edit_renders_key_edit_header(mock: DisplayMock):
     from ui.state import State
 
