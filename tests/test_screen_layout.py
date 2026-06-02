@@ -315,3 +315,42 @@ def test_cipher_row_not_shown_in_key_edit_mode(mock: DisplayMock):
     render(mock, State(algorithm="keyword", screen="setup_key", cipher_key="X", key_buf="X"))
     cipher_row_calls = [c for c in mock.texts() if c.y == CIPHER_ROW_Y]
     assert cipher_row_calls == []
+
+
+# ---------------------------------------------------------------------------
+# Keyword cipher row — no duplicates
+# ---------------------------------------------------------------------------
+
+def _cipher_row_chars(mock: DisplayMock, state) -> list[str]:
+    """Render and return all single-letter texts drawn at CIPHER_ROW_Y."""
+    render(mock, state)
+    return [c.s for c in mock.texts() if c.y == CIPHER_ROW_Y and len(c.s) == 1]
+
+
+def test_keyword_cipher_row_no_duplicates_zebra(mock: DisplayMock):
+    # 'ZEBRA' triggered triplicate J/E/O/T/Y with the old encode(ALPHABET) approach.
+    state = State(algorithm="keyword", cipher_key="ZEBRA", wheel_idx=0)
+    chars = _cipher_row_chars(mock, state)
+    assert len(chars) == len(set(chars)), f"duplicate cipher-row letters: {chars}"
+
+
+@pytest.mark.parametrize("key", ["APPLE", "AAAAA", "SECRET", "ABCDE", "Z"])
+def test_keyword_cipher_row_no_duplicates_any_key(mock: DisplayMock, key: str):
+    state = State(algorithm="keyword", cipher_key=key, wheel_idx=0)
+    chars = _cipher_row_chars(mock, state)
+    assert len(chars) == len(set(chars)), f"key={key!r} produced duplicates: {chars}"
+
+
+def test_keyword_cipher_row_uses_current_key_position(mock: DisplayMock):
+    # With key='ZEBRA' and no chars typed (ki=0 → 'Z', shift=25):
+    # plain A(0) + shift(25) = 25 = 'Z'; cipher row at wheel_idx=0 shows 'Z' at center.
+    state = State(algorithm="keyword", cipher_key="ZEBRA", wheel_idx=0)
+    chars = _cipher_row_chars(mock, state)
+    assert chars[0] == "Z", f"expected 'Z' at cipher position 0, got {chars[0]!r}"
+
+
+def test_keyword_cipher_row_advances_with_in_buf(mock: DisplayMock):
+    # After typing one char, ki=1 → 'E' (shift=4): plain A(0)+4 = 'E'.
+    state = State(algorithm="keyword", cipher_key="ZEBRA", wheel_idx=0, in_buf="H")
+    chars = _cipher_row_chars(mock, state)
+    assert chars[0] == "E", f"expected 'E' at cipher position 0 after 1 char, got {chars[0]!r}"

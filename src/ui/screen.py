@@ -212,16 +212,29 @@ def _focus_letters(
 def _cipher_row(state: State, ciphers: dict | None = None) -> list[str]:
     """Return 26 cipher-alphabet characters (always encode direction).
 
-    Encodes the full ALPHABET string as one message so the key cycles across
-    all 26 positions.  For monoalphabetic ciphers (rot13) this is identical to
-    encoding each letter individually.  For polyalphabetic ciphers (Vigenère/
-    keyword) every slot uses a different key character, so the row always looks
-    visually distinct from the plain wheel regardless of which letter starts
-    the key.
+    For monoalphabetic ciphers (rot13): encode(ALPHABET) is a permutation —
+    every plaintext letter maps to a unique cipher letter, so showing all 26
+    gives the full bijection.
+
+    For polyalphabetic ciphers (Vigenère/keyword): encode(ALPHABET) cycles the
+    key across 26 DIFFERENT positions, producing duplicates (e.g. 'ZEBRA'
+    gives three J's, three E's, …).  Instead we show the Caesar shift for the
+    CURRENT key position — key[len(in_buf) % len(key)] — which is always a
+    permutation and changes as the user types, making the polyalphabetic nature
+    visible.
 
     Both ENC and DEC modes use the same cipher alphabet so _render_encode can
     swap which row sits on top rather than recomputing a reversed mapping.
     """
+    # Polyalphabetic (keyword/Vigenère): show the Caesar alphabet for the
+    # current key character.  A fresh cipher instance with a 1-char key applies
+    # the same shift to every position → guaranteed permutation, no duplicates.
+    if state.algorithm == "keyword" and state.cipher_key:
+        ki = len(state.in_buf) % len(state.cipher_key)
+        shift = ord(state.cipher_key[ki]) - ord('A')
+        return [ALPHABET[(i + shift) % 26] for i in range(26)]
+
+    # Monoalphabetic: encode(ALPHABET) is always a permutation.
     cipher = None
     if ciphers is not None:
         cipher = ciphers.get(state.algorithm)
