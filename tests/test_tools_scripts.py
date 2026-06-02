@@ -323,18 +323,23 @@ def test_device_prep_uses_resume_mode():
     assert "resume" in content, "device_prep.sh must use mpremote resume"
 
 
-def test_device_prep_removes_res_stickcplus():
-    """device_prep.sh must target the UIFlow 2 JPEG asset directory."""
+def test_device_prep_removes_res_directory():
+    """device_prep.sh must remove /flash/res/ (UIFlow 2 bloat lives there).
+    The script uses a recursive rmtree rather than enumerating specific files
+    so it works across UIFlow 2 firmware versions that vary in what they store.
+    """
     with open(DEVICE_PREP_SH) as f:
         content = f.read()
-    assert "/flash/res/stickcplus" in content, "device_prep.sh must remove /flash/res/stickcplus"
+    assert "/flash/res" in content, "device_prep.sh must target /flash/res"
+    assert "rmtree" in content or "rmdir" in content, \
+        "device_prep.sh must remove the /flash/res directory tree"
 
 
-def test_device_prep_removes_avatar_jpg():
-    """device_prep.sh must remove the standalone avatar.jpg."""
+def test_device_prep_removes_apps_directory():
+    """device_prep.sh must remove /flash/apps/ (UIFlow 2 sample apps)."""
     with open(DEVICE_PREP_SH) as f:
         content = f.read()
-    assert "avatar.jpg" in content, "device_prep.sh must remove avatar.jpg"
+    assert "/flash/apps" in content, "device_prep.sh must target /flash/apps"
 
 
 def test_device_prep_checks_free_space():

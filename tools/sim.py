@@ -214,7 +214,7 @@ class TkDisplay:
             fill=rgb, outline=rgb,
         )
 
-    def text(self, s: str, x: int, y: int, color: int, scale: int = 1) -> None:
+    def text(self, s: str, x: int, y: int, color: int, scale: int = 1, center_x: bool = False) -> None:
         rgb = COLOR_MAP.get(color, "#ffffff")
         size_px = self._base_px * scale
         self._canvas.create_text(
@@ -222,7 +222,7 @@ class TkDisplay:
             y * self._scale,
             text=s,
             fill=rgb,
-            anchor="nw",
+            anchor="n" if center_x else "nw",
             font=("Courier", -size_px, "bold"),
         )
 

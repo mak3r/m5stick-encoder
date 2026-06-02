@@ -1,4 +1,34 @@
 {
   "btn_b_scroll_ms": 300,
-  "btn_b_repeat_delay_ms": 1000
+  "btn_b_repeat_delay_ms": 1000,
+
+  "wheel_font": "Cascadia16",
+  "wheel_center_font": "Cascadia30",
+
+  "wheel_scale": 1,
+  "wheel_center_scale": 1,
+  "wheel_letter_gap": 3,
+  "wheel_center_extra": 4,
+  "wheel_center_y_offset": -4,
+
+  "in_out_scale": 1,
+
+  "wheel_y": 26,
+  "cipher_row_y": 56,
+  "in_y": 78,
+  "out_y": 100,
+  "footer_y": 120,
+
+  "in_font": "Cascadia18",
+  "in_scale": 1,
+  "out_font": "Cascadia18",
+  "out_scale": 1,
+
+  "setup_key_focus_y": 54,
+  "setup_key_focus_scale": 3,
+  "setup_key_focus_font": "Cascadia30",
+  "setup_key_line_y": 84,
+  "setup_key_line_scale": 1,
+  "setup_key_line_font": "Cascadia12"
+
 }

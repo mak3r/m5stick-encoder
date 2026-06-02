@@ -10,7 +10,12 @@ size in both axes:
 
 - ``scale=1`` → 8x8 per glyph (default body text, the cipher wheel)
 - ``scale=2`` → 16x16 per glyph
-- ``scale=3`` → 24x24 per glyph (the focused-letter "magic reveal" row)
+- ``scale=3`` → 24x24 per glyph (center scroll-wheel letter, no smooth font)
+
+When a smooth font is loaded via ``load_font()``, pass ``scale=1`` —
+the .vlw file encodes the size natively and setTextSize would scale it
+again. Call ``text_width(s)`` after loading to measure character advance
+(returns the sum of per-glyph xAdvance values).
 
 Callers compute pixel positions assuming this convention; concrete
 displays must honor it so layouts produced against the mock match what
@@ -27,7 +32,13 @@ class Display(Protocol):
 
     def fill(self, color: int) -> None: ...
 
-    def text(self, s: str, x: int, y: int, color: int, scale: int = 1) -> None: ...
+    def text(  # noqa: PLR0913
+        self, s: str, x: int, y: int, color: int, scale: int = 1, center_x: bool = False
+    ) -> None: ...
+
+    def load_font(self, name: str) -> None: ...
+    def unload_font(self) -> None: ...
+    def text_width(self, s: str) -> int: ...
 
     def rect(self, x: int, y: int, w: int, h: int, color: int, fill: bool = False) -> None: ...
 

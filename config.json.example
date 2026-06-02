@@ -1,4 +1,31 @@
 {
   "btn_b_scroll_ms": 300,
-  "btn_b_repeat_delay_ms": 500
+  "btn_b_repeat_delay_ms": 500,
+
+  "wheel_font": "",
+  "wheel_center_font": "",
+  "wheel_scale": 2,
+  "wheel_center_scale": 3,
+  "wheel_letter_gap": 6,
+  "wheel_center_extra": 3,
+  "wheel_center_y_offset": 0,
+
+  "in_out_scale": 1,
+  "in_font": "",
+  "in_scale": 1,
+  "out_font": "",
+  "out_scale": 1,
+
+  "wheel_y": 18,
+  "cipher_row_y": 52,
+  "in_y": 86,
+  "out_y": 100,
+  "footer_y": 114,
+
+  "setup_key_focus_y": 54,
+  "setup_key_focus_scale": 3,
+  "setup_key_focus_font": "",
+  "setup_key_line_y": 84,
+  "setup_key_line_scale": 1,
+  "setup_key_line_font": ""
 }
