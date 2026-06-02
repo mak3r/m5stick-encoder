@@ -222,9 +222,9 @@ def test_pwr_double_is_noop_in_encode():
 
 def test_btn_a_long_always_toggles_enc_dec_in_encode():
     # BTN_A_LONG toggles ENC↔DEC regardless of cipher — no context-sensitivity.
-    from encoder.keyword import KeywordCipher
-    state = State(algorithm="keyword", cipher_key="KEY")
-    app = App(state, {"rot13": make_app().ciphers["rot13"], "keyword": KeywordCipher()})
+    from encoder.vigenere import VigenèreCipher
+    state = State(algorithm="vigenere", cipher_key="KEY")
+    app = App(state, {"rot13": make_app().ciphers["rot13"], "vigenere": VigenèreCipher()})
     assert app.state.mode == "ENC"
     app.handle(ButtonEvent.BTN_A_LONG)
     assert app.state.mode == "DEC"
@@ -235,14 +235,16 @@ def test_btn_a_long_always_toggles_enc_dec_in_encode():
 # ---------------------------------------------------------------------------
 
 def _make_setup_cipher_app(**state_kwargs):
-    """App starting on the cipher-selection screen."""
+    """App starting on the cipher-selection screen with all four ciphers."""
     from encoder.caesar import CaesarCipher
     from encoder.keyword import KeywordCipher
+    from encoder.vigenere import VigenèreCipher
     state = State(screen="setup_cipher", **state_kwargs)
     return App(state, {
         "rot13": make_app().ciphers["rot13"],
-        "keyword": KeywordCipher(),
         "caesar": CaesarCipher(),
+        "keyword": KeywordCipher(),
+        "vigenere": VigenèreCipher(),
     })
 
 
@@ -271,13 +273,13 @@ def test_setup_cipher_select_rot13_goes_to_encode():
     assert app.state.algorithm == "rot13"
 
 
-def test_setup_cipher_select_keyword_goes_to_setup_key():
-    from encoder.keyword import KeywordCipher
+def test_setup_cipher_select_vigenere_goes_to_setup_key():
+    from encoder.vigenere import VigenèreCipher
     state = State(screen="setup_cipher", setup_idx=1, cipher_key="OLD")
-    app = App(state, {"rot13": make_app().ciphers["rot13"], "keyword": KeywordCipher()})
+    app = App(state, {"rot13": make_app().ciphers["rot13"], "vigenere": VigenèreCipher()})
     app.handle(ButtonEvent.BTN_A_PRESS)
     assert app.state.screen == "setup_key"
-    assert app.state.algorithm == "keyword"
+    assert app.state.algorithm == "vigenere"
     assert app.state.key_buf == "OLD"  # pre-filled from cipher_key
 
 
@@ -288,11 +290,11 @@ def test_setup_cipher_caesar_is_in_cipher_list():
 
 def test_setup_cipher_select_caesar_goes_to_setup_key():
     from encoder.caesar import CaesarCipher
-    from encoder.keyword import KeywordCipher
+    from encoder.vigenere import VigenèreCipher
     state = State(screen="setup_cipher", setup_idx=2, caesar_key="F")
     app = App(state, {
         "rot13": make_app().ciphers["rot13"],
-        "keyword": KeywordCipher(),
+        "vigenere": VigenèreCipher(),
         "caesar": CaesarCipher(),
     })
     app.handle(ButtonEvent.BTN_A_PRESS)
@@ -303,11 +305,11 @@ def test_setup_cipher_select_caesar_goes_to_setup_key():
 
 def test_setup_cipher_caesar_prefill_uses_caesar_key_not_cipher_key():
     from encoder.caesar import CaesarCipher
-    from encoder.keyword import KeywordCipher
+    from encoder.vigenere import VigenèreCipher
     state = State(screen="setup_cipher", setup_idx=2, cipher_key="ZEBRA", caesar_key="G")
     app = App(state, {
         "rot13": make_app().ciphers["rot13"],
-        "keyword": KeywordCipher(),
+        "vigenere": VigenèreCipher(),
         "caesar": CaesarCipher(),
     })
     app.handle(ButtonEvent.BTN_A_PRESS)
@@ -318,21 +320,21 @@ def test_setup_cipher_caesar_prefill_uses_caesar_key_not_cipher_key():
 # setup_key screen
 # ---------------------------------------------------------------------------
 
-def _make_keyword_app(key="KEY", on_save_key=None, **state_kwargs):
+def _make_vigenere_app(key="KEY", on_save_key=None, **state_kwargs):
     """App on the setup_key screen, pre-loaded with ``key``."""
-    from encoder.keyword import KeywordCipher
+    from encoder.vigenere import VigenèreCipher
     state = State(
-        algorithm="keyword",
+        algorithm="vigenere",
         cipher_key=key,
         screen="setup_key",
         key_buf=key,
         **state_kwargs,
     )
-    return App(state, {"keyword": KeywordCipher(key)}, on_save_key=on_save_key)
+    return App(state, {"vigenere": VigenèreCipher(key)}, on_save_key=on_save_key)
 
 
 def test_setup_key_a_press_appends_letter():
-    app = _make_keyword_app()
+    app = _make_vigenere_app()
     app.state.key_buf = ""
     app.state.wheel_idx = 0  # A
     changed = app.handle(ButtonEvent.BTN_A_PRESS)
@@ -341,14 +343,14 @@ def test_setup_key_a_press_appends_letter():
 
 
 def test_setup_key_a_double_deletes_last():
-    app = _make_keyword_app()
+    app = _make_vigenere_app()
     app.state.key_buf = "AB"
     app.handle(ButtonEvent.BTN_A_DOUBLE)
     assert app.state.key_buf == "A"
 
 
 def test_setup_key_a_double_noop_on_empty():
-    app = _make_keyword_app()
+    app = _make_vigenere_app()
     app.state.key_buf = ""
     changed = app.handle(ButtonEvent.BTN_A_DOUBLE)
     assert changed is False
@@ -357,7 +359,7 @@ def test_setup_key_a_double_noop_on_empty():
 
 def test_setup_key_a_long_confirms_and_goes_to_encode():
     saved = []
-    app = _make_keyword_app(on_save_key=saved.append)
+    app = _make_vigenere_app(on_save_key=saved.append)
     app.state.key_buf = "SECRET"
     app.handle(ButtonEvent.BTN_A_LONG)
     assert app.state.screen == "encode"
@@ -367,7 +369,7 @@ def test_setup_key_a_long_confirms_and_goes_to_encode():
 
 
 def test_setup_key_empty_buf_keeps_old_key():
-    app = _make_keyword_app(key="HELLO")
+    app = _make_vigenere_app(key="HELLO")
     app.state.key_buf = ""
     app.handle(ButtonEvent.BTN_A_LONG)
     assert app.state.cipher_key == "HELLO"
@@ -375,7 +377,7 @@ def test_setup_key_empty_buf_keeps_old_key():
 
 
 def test_setup_key_wheel_still_works():
-    app = _make_keyword_app()
+    app = _make_vigenere_app()
     app.state.wheel_idx = 5
     app.handle(ButtonEvent.BTN_B_PRESS)
     assert app.state.wheel_idx == 4
@@ -384,10 +386,10 @@ def test_setup_key_wheel_still_works():
 
 
 def test_setup_key_updates_cipher_instance():
-    from encoder.keyword import KeywordCipher
-    kw = KeywordCipher("OLD")
-    state = State(algorithm="keyword", cipher_key="OLD", screen="setup_key", key_buf="OLD")
-    app = App(state, {"keyword": kw})
+    from encoder.vigenere import VigenèreCipher
+    kw = VigenèreCipher("OLD")
+    state = State(algorithm="vigenere", cipher_key="OLD", screen="setup_key", key_buf="OLD")
+    app = App(state, {"vigenere": kw})
     app.state.key_buf = "NEW"
     app.handle(ButtonEvent.BTN_A_LONG)
     assert kw.key == "NEW"
@@ -440,7 +442,7 @@ def test_caesar_setup_key_a_long_updates_caesar_key():
 
 
 def test_caesar_confirm_does_not_touch_cipher_key():
-    # Confirming a caesar key must not overwrite the keyword cipher's saved key.
+    # Confirming a caesar key must not overwrite the vigenere/keyword cipher_key.
     app = _make_caesar_app(key="D")
     app.state.cipher_key = "ZEBRA"
     app.state.key_buf = "F"
@@ -465,6 +467,74 @@ def test_caesar_cipher_instance_updated_on_confirm():
     app.state.key_buf = "F"
     app.handle(ButtonEvent.BTN_A_LONG)
     assert ca.key == "F"
+
+
+# ---------------------------------------------------------------------------
+# setup_cipher / setup_key — keyword substitution cipher
+# ---------------------------------------------------------------------------
+
+def _make_keyword_app(key="KEY", on_save_key=None, **state_kwargs):
+    """App on the setup_key screen for keyword substitution, pre-loaded with ``key``."""
+    from encoder.keyword import KeywordCipher
+    state = State(
+        algorithm="keyword",
+        cipher_key=key,
+        screen="setup_key",
+        key_buf=key,
+        **state_kwargs,
+    )
+    return App(state, {"keyword": KeywordCipher(key)}, on_save_key=on_save_key)
+
+
+def test_setup_cipher_keyword_is_in_cipher_list():
+    app = _make_setup_cipher_app()
+    assert "keyword" in app.ciphers
+
+
+def test_setup_cipher_select_keyword_goes_to_setup_key():
+    app = _make_setup_cipher_app(setup_idx=2, cipher_key="ZEBRA")
+    app.handle(ButtonEvent.BTN_A_PRESS)
+    assert app.state.screen == "setup_key"
+    assert app.state.algorithm == "keyword"
+    assert app.state.key_buf == "ZEBRA"  # pre-filled from cipher_key
+
+
+def test_keyword_setup_key_a_press_appends_letter():
+    app = _make_keyword_app()
+    app.state.key_buf = ""
+    app.state.wheel_idx = 0  # A
+    app.handle(ButtonEvent.BTN_A_PRESS)
+    assert app.state.key_buf == "A"
+
+
+def test_keyword_setup_key_a_long_confirms_and_goes_to_encode():
+    saved = []
+    app = _make_keyword_app(on_save_key=saved.append)
+    app.state.key_buf = "ZEBRA"
+    app.handle(ButtonEvent.BTN_A_LONG)
+    assert app.state.screen == "encode"
+    assert app.state.cipher_key == "ZEBRA"
+    assert app.state.key_buf == ""
+    assert saved == ["ZEBRA"]
+
+
+def test_keyword_confirm_does_not_touch_caesar_key():
+    app = _make_keyword_app()
+    app.state.caesar_key = "F"
+    app.state.key_buf = "ZEBRA"
+    app.handle(ButtonEvent.BTN_A_LONG)
+    assert app.state.caesar_key == "F"
+    assert app.state.cipher_key == "ZEBRA"
+
+
+def test_keyword_setup_key_updates_cipher_instance():
+    from encoder.keyword import KeywordCipher
+    kw = KeywordCipher("OLD")
+    state = State(algorithm="keyword", cipher_key="OLD", screen="setup_key", key_buf="OLD")
+    app = App(state, {"keyword": kw})
+    app.state.key_buf = "ZEBRA"
+    app.handle(ButtonEvent.BTN_A_LONG)
+    assert kw.key == "ZEBRA"
 
 
 def test_app_is_cipher_agnostic_via_protocol_stub():
