@@ -208,18 +208,18 @@ def test_text_call_default_scale_is_one(mock: DisplayMock):
     assert call.scale == 1
 
 
-def test_keyword_top_bar_shows_key_hint(mock: DisplayMock):
+def test_vigenere_top_bar_shows_key_hint(mock: DisplayMock):
     from ui.state import State
 
-    render(mock, State(algorithm="keyword", cipher_key="SECRET"))
+    render(mock, State(algorithm="vigenere", cipher_key="SECRET"))
     # Key hint is truncated to 5 chars.
-    assert any("keyword SECRE" in c.s for c in mock.texts())
+    assert any("vigenere SECRE" in c.s for c in mock.texts())
 
 
 def test_rot13_top_bar_shows_algorithm_name(mock: DisplayMock):
     render(mock, State(algorithm="rot13"))
     assert any(c.s == "rot13" for c in mock.texts())
-    assert not any("keyword" in c.s for c in mock.texts())
+    assert not any("vigenere" in c.s for c in mock.texts())
 
 
 def test_caesar_top_bar_shows_key_hint(mock: DisplayMock):
@@ -241,14 +241,14 @@ def test_caesar_top_bar_does_not_show_cipher_key(mock: DisplayMock):
 def test_key_edit_renders_key_edit_header(mock: DisplayMock):
     from ui.state import State
 
-    render(mock, State(algorithm="keyword", screen="setup_key", key_buf="AB"))
+    render(mock, State(algorithm="vigenere", screen="setup_key", key_buf="AB"))
     assert any("[SETUP KEY]" in c.s for c in mock.texts())
 
 
 def test_key_edit_renders_key_buf_large(mock: DisplayMock):
     from ui.state import State
 
-    render(mock, State(algorithm="keyword", screen="setup_key", key_buf="AB"))
+    render(mock, State(algorithm="vigenere", screen="setup_key", key_buf="AB"))
     big = [c for c in mock.texts() if c.scale >= 2]
     assert any("AB" in c.s for c in big)
 
@@ -256,14 +256,14 @@ def test_key_edit_renders_key_buf_large(mock: DisplayMock):
 def test_key_edit_renders_footer_legend(mock: DisplayMock):
     from ui.state import State
 
-    render(mock, State(algorithm="keyword", screen="setup_key", key_buf="X"))
+    render(mock, State(algorithm="vigenere", screen="setup_key", key_buf="X"))
     assert any("A:letter" in c.s for c in mock.texts())
 
 
 def test_key_edit_calls_show(mock: DisplayMock):
     from ui.state import State
 
-    render(mock, State(algorithm="keyword", screen="setup_key"))
+    render(mock, State(algorithm="vigenere", screen="setup_key"))
     assert isinstance(mock.calls[-1], ShowCall)
 
 
@@ -345,13 +345,13 @@ def test_wheel_font_passes_scale_1_to_text(mock: DisplayMock):
 
 
 def test_cipher_row_not_shown_in_key_edit_mode(mock: DisplayMock):
-    render(mock, State(algorithm="keyword", screen="setup_key", cipher_key="X", key_buf="X"))
+    render(mock, State(algorithm="vigenere", screen="setup_key", cipher_key="X", key_buf="X"))
     cipher_row_calls = [c for c in mock.texts() if c.y == CIPHER_ROW_Y]
     assert cipher_row_calls == []
 
 
 # ---------------------------------------------------------------------------
-# Keyword cipher row — no duplicates
+# Vigenère cipher row — no duplicates
 # ---------------------------------------------------------------------------
 
 def _cipher_row_chars(mock: DisplayMock, state) -> list[str]:
@@ -360,30 +360,73 @@ def _cipher_row_chars(mock: DisplayMock, state) -> list[str]:
     return [c.s for c in mock.texts() if c.y == CIPHER_ROW_Y and len(c.s) == 1]
 
 
-def test_keyword_cipher_row_no_duplicates_zebra(mock: DisplayMock):
+def test_vigenere_cipher_row_no_duplicates_zebra(mock: DisplayMock):
     # 'ZEBRA' triggered triplicate J/E/O/T/Y with the old encode(ALPHABET) approach.
-    state = State(algorithm="keyword", cipher_key="ZEBRA", wheel_idx=0)
+    state = State(algorithm="vigenere", cipher_key="ZEBRA", wheel_idx=0)
     chars = _cipher_row_chars(mock, state)
     assert len(chars) == len(set(chars)), f"duplicate cipher-row letters: {chars}"
 
 
 @pytest.mark.parametrize("key", ["APPLE", "AAAAA", "SECRET", "ABCDE", "Z"])
-def test_keyword_cipher_row_no_duplicates_any_key(mock: DisplayMock, key: str):
-    state = State(algorithm="keyword", cipher_key=key, wheel_idx=0)
+def test_vigenere_cipher_row_no_duplicates_any_key(mock: DisplayMock, key: str):
+    state = State(algorithm="vigenere", cipher_key=key, wheel_idx=0)
     chars = _cipher_row_chars(mock, state)
     assert len(chars) == len(set(chars)), f"key={key!r} produced duplicates: {chars}"
 
 
-def test_keyword_cipher_row_uses_current_key_position(mock: DisplayMock):
+def test_vigenere_cipher_row_uses_current_key_position(mock: DisplayMock):
     # With key='ZEBRA' and no chars typed (ki=0 → 'Z', shift=25):
     # plain A(0) + shift(25) = 25 = 'Z'; cipher row at wheel_idx=0 shows 'Z' at center.
-    state = State(algorithm="keyword", cipher_key="ZEBRA", wheel_idx=0)
+    state = State(algorithm="vigenere", cipher_key="ZEBRA", wheel_idx=0)
     chars = _cipher_row_chars(mock, state)
     assert chars[0] == "Z", f"expected 'Z' at cipher position 0, got {chars[0]!r}"
 
 
-def test_keyword_cipher_row_advances_with_in_buf(mock: DisplayMock):
+def test_vigenere_cipher_row_advances_with_in_buf(mock: DisplayMock):
     # After typing one char, ki=1 → 'E' (shift=4): plain A(0)+4 = 'E'.
-    state = State(algorithm="keyword", cipher_key="ZEBRA", wheel_idx=0, in_buf="H")
+    state = State(algorithm="vigenere", cipher_key="ZEBRA", wheel_idx=0, in_buf="H")
     chars = _cipher_row_chars(mock, state)
     assert chars[0] == "E", f"expected 'E' at cipher position 0 after 1 char, got {chars[0]!r}"
+
+
+# ---------------------------------------------------------------------------
+# Keyword substitution cipher row
+# ---------------------------------------------------------------------------
+
+def test_keyword_subst_top_bar_shows_key_hint(mock: DisplayMock):
+    render(mock, State(algorithm="keyword", cipher_key="ZEBRA"))
+    assert any("keyword ZEBRA" in c.s for c in mock.texts())
+
+
+def test_keyword_subst_top_bar_default_key(mock: DisplayMock):
+    render(mock, State(algorithm="keyword", cipher_key="KEY"))
+    assert any("keyword KEY" in c.s for c in mock.texts())
+
+
+def test_keyword_subst_cipher_row_is_permutation(mock: DisplayMock):
+    # encode(A-Z) for a substitution cipher is a 26-letter permutation — no duplicates.
+    state = State(algorithm="keyword", cipher_key="ZEBRA", wheel_idx=0)
+    chars = _cipher_row_chars(mock, state)
+    assert len(chars) == len(set(chars)), f"duplicate cipher-row letters: {chars}"
+
+
+def test_keyword_subst_cipher_row_does_not_change_with_in_buf(mock: DisplayMock):
+    # Monoalphabetic: the cipher row must be the same regardless of how many
+    # chars have been typed.
+    state_empty = State(algorithm="keyword", cipher_key="ZEBRA", wheel_idx=0, in_buf="")
+    state_typed = State(algorithm="keyword", cipher_key="ZEBRA", wheel_idx=0, in_buf="HELLO")
+    mock1 = type(mock)()
+    mock2 = type(mock)()
+    render(mock1, state_empty)
+    render(mock2, state_typed)
+    chars_empty = [c.s for c in mock1.texts() if c.y == CIPHER_ROW_Y and len(c.s) == 1]
+    chars_typed = [c.s for c in mock2.texts() if c.y == CIPHER_ROW_Y and len(c.s) == 1]
+    assert chars_empty == chars_typed, "keyword substitution cipher row must not change with in_buf"
+
+
+def test_keyword_subst_cipher_row_center_is_z_for_zebra(mock: DisplayMock):
+    # With key ZEBRA at wheel_idx=0 (A), the cipher row center should be Z
+    # because A→Z in the ZEBRA substitution alphabet.
+    state = State(algorithm="keyword", cipher_key="ZEBRA", wheel_idx=0)
+    chars = _cipher_row_chars(mock, state)
+    assert chars[0] == "Z", f"expected 'Z' at cipher position 0, got {chars[0]!r}"

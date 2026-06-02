@@ -176,6 +176,9 @@ def main() -> None:
         ciphers = {name: cls() for name, cls in ALGORITHMS.items()}
         order = list(ciphers.keys())
         state.setup_idx = order.index(saved_algo) if saved_algo in order else 0
+        vi_cipher = ciphers.get("vigenere")
+        if vi_cipher and hasattr(vi_cipher, 'key'):
+            vi_cipher.key = saved_key   # type: ignore[attr-defined]
         kw_cipher = ciphers.get("keyword")
         if kw_cipher and hasattr(kw_cipher, 'key'):
             kw_cipher.key = saved_key   # type: ignore[attr-defined]
