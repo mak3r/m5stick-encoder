@@ -99,13 +99,15 @@ def test_render_shows_unknown_battery_by_default():
 
 
 def test_render_battery_in_top_bar():
-    """Battery text must share the same y-coordinate as the mode tag."""
+    """Battery and algo text share the same y, vertically centred against the 2× mode tag."""
+    from ui.screen import GLYPH_H, TOP_BAR_Y
     mock = DisplayMock()
     render(mock, State())
-    mode_y = next(c for c in mock.texts() if c.s.startswith("[")).y
     batt_calls = [c for c in mock.texts() if "B:" in c.s and "%" in c.s]
     assert batt_calls
-    assert batt_calls[0].y == mode_y
+    # Small items (scale=1) are offset by GLYPH_H//2 to sit mid-height inside the 2× tag.
+    expected_y = TOP_BAR_Y + GLYPH_H // 2
+    assert batt_calls[0].y == expected_y
 
 
 # ---------------------------------------------------------------------------
@@ -363,6 +365,13 @@ def test_main_imports_load_config():
     assert "load_config" in source, "load_config not imported in main.py"
 
 
+def test_main_calls_screen_configure_with_cfg():
+    """main.py must call screen.configure(cfg) so wheel layout params are applied."""
+    with open(_MAIN_PATH) as f:
+        source = f.read()
+    assert "screen.configure" in source, "screen.configure() not called in main.py"
+
+
 def test_main_calls_load_config_before_buttonfsm():
     """load_config() must be called in main() and its result passed to ButtonFSM."""
     with open(_MAIN_PATH) as f:
@@ -415,30 +424,30 @@ def _get_main_func(tree: ast.Module) -> ast.FunctionDef:
     pytest.fail("main() not found in main.py")
 
 
-def test_main_imports_load_key_and_save_key():
-    """main.py must import both load_key and save_key from ui.key_store."""
+def test_main_imports_load_setup_and_save_setup():
+    """main.py must import load_setup and save_setup from ui.key_store."""
     with open(_MAIN_PATH) as f:
         source = f.read()
-    assert "load_key" in source, "load_key not imported in main.py"
-    assert "save_key" in source, "save_key not imported in main.py"
+    assert "load_setup" in source, "load_setup not imported in main.py"
+    assert "save_setup" in source, "save_setup not imported in main.py"
 
 
-def test_main_calls_load_key_at_boot():
-    """main() must call load_key() and assign the result to state.cipher_key."""
+def test_main_calls_load_setup_at_boot():
+    """main() must call load_setup() to restore saved algorithm and key."""
     with open(_MAIN_PATH) as f:
         source = f.read()
     tree = ast.parse(source)
     main_func = _get_main_func(tree)
 
-    load_key_calls = [
+    load_setup_calls = [
         n for n in ast.walk(main_func)
         if isinstance(n, ast.Call)
         and isinstance(n.func, ast.Name)
-        and n.func.id == "load_key"
+        and n.func.id == "load_setup"
     ]
-    assert load_key_calls, "load_key() is not called inside main()"
+    assert load_setup_calls, "load_setup() is not called inside main()"
 
-    # The result must be assigned to state.cipher_key.
+    # state.cipher_key must be assigned from the loaded value.
     assigns_cipher_key = [
         n for n in ast.walk(main_func)
         if isinstance(n, ast.Assign)
@@ -453,8 +462,8 @@ def test_main_calls_load_key_at_boot():
     assert assigns_cipher_key, "state.cipher_key is not assigned in main()"
 
 
-def test_main_passes_save_key_as_on_save_key():
-    """App() in main() must receive save_key as the on_save_key keyword arg."""
+def test_main_passes_on_save_key_to_app():
+    """App() in main() must receive an on_save_key keyword arg."""
     with open(_MAIN_PATH) as f:
         source = f.read()
     tree = ast.parse(source)
@@ -470,8 +479,3 @@ def test_main_passes_save_key_as_on_save_key():
 
     on_save_key_kwarg = [kw for kw in app_calls[0].keywords if kw.arg == "on_save_key"]
     assert on_save_key_kwarg, "App() is missing on_save_key keyword arg"
-
-    kw_val = on_save_key_kwarg[0].value
-    assert isinstance(kw_val, ast.Name) and kw_val.id == "save_key", (
-        f"on_save_key must be save_key, got {ast.dump(kw_val)}"
-    )

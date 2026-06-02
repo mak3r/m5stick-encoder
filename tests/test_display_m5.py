@@ -178,6 +178,29 @@ def test_text_method_has_scale_parameter(source):
     assert "scale: int = 1" in source or "scale=1" in source
 
 
+def test_text_method_has_center_x_parameter(source):
+    assert "center_x" in source
+
+
+def test_setTextDatum_guarded_by_getattr(source):
+    # setTextDatum must be fetched via getattr so the app survives UIFlow builds
+    # that don't expose the method — without this guard the device soft-resets.
+    assert "getattr" in source and "setTextDatum" in source
+
+
+def test_load_font_uses_flash_res_font_path(source):
+    assert "loadFont" in source
+    assert "/flash/res/font/" in source
+
+
+def test_unload_font_calls_unloadFont(source):
+    assert "unloadFont" in source
+
+
+def test_text_width_calls_textWidth(source):
+    assert "textWidth" in source
+
+
 def test_show_is_noop(source):
     """show() must be present and M5.Lcd needs no explicit flush."""
     assert "def show(" in source

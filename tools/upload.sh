@@ -75,6 +75,16 @@ done
 
 $MPR resume cp "$REPO_ROOT/src/main.py" :/flash/main.py
 
+# Deploy .vlw smooth fonts to /flash/res/font/ if the fonts/ directory has any.
+if compgen -G "$REPO_ROOT/fonts/*.vlw" > /dev/null 2>&1; then
+    echo "==> Uploading fonts to :/flash/res/font/ ..."
+    $MPR resume mkdir :/flash/res 2>/dev/null || true
+    $MPR resume mkdir :/flash/res/font 2>/dev/null || true
+    for f in "$REPO_ROOT"/fonts/*.vlw; do
+        $MPR resume cp "$f" ":/flash/res/font/$(basename "$f")"
+    done
+fi
+
 # Deploy config.json to device root if present locally; skip silently if absent.
 if [[ -f "$REPO_ROOT/config.json" ]]; then
     echo "==> Deploying config.json ..."

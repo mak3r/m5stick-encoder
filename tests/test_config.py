@@ -167,6 +167,56 @@ def test_repo_config_json_example_exists_and_is_valid():
     assert isinstance(data, dict)
 
 
+# ---------------------------------------------------------------------------
+# screen.configure() integration
+# ---------------------------------------------------------------------------
+
+
+def test_configure_empty_cfg_keeps_defaults():
+    import ui.screen as screen
+    before = {
+        "wheel_scale": screen.WHEEL_SCALE,
+        "wheel_center_scale": screen.WHEEL_CENTER_SCALE,
+        "wheel_letter_gap": screen.WHEEL_LETTER_GAP,
+        "wheel_center_extra": screen.WHEEL_CENTER_EXTRA,
+        "in_scale": screen.IN_SCALE,
+        "out_scale": screen.OUT_SCALE,
+        "wheel_y": screen.WHEEL_Y,
+        "cipher_row_y": screen.CIPHER_ROW_Y,
+        "in_y": screen.IN_Y,
+        "out_y": screen.OUT_Y,
+        "footer_y": screen.FOOTER_Y,
+    }
+    screen.configure({})
+    assert screen.WHEEL_SCALE == before["wheel_scale"]
+    assert screen.CIPHER_ROW_Y == before["cipher_row_y"]
+    assert screen.IN_SCALE == before["in_scale"]
+    assert screen.OUT_SCALE == before["out_scale"]
+
+
+def test_configure_overrides_take_effect():
+    import ui.screen as screen
+    saved = screen.WHEEL_SCALE, screen.WHEEL_LETTER_GAP, screen.CIPHER_ROW_Y
+    try:
+        screen.configure({"wheel_scale": 1, "wheel_letter_gap": 2, "cipher_row_y": 40})
+        assert screen.WHEEL_SCALE == 1
+        assert screen.WHEEL_LETTER_GAP == 2
+        assert screen.CIPHER_ROW_Y == 40
+    finally:
+        screen.WHEEL_SCALE, screen.WHEEL_LETTER_GAP, screen.CIPHER_ROW_Y = saved
+
+
+def test_config_example_contains_wheel_keys():
+    with open(_CONFIG_EXAMPLE) as f:
+        data = json.load(f)
+    for key in ("wheel_font", "wheel_center_font",
+                "wheel_scale", "wheel_center_scale", "wheel_letter_gap",
+                "wheel_center_extra", "wheel_center_y_offset",
+                "in_font", "in_scale", "out_font", "out_scale",
+                "wheel_y", "cipher_row_y", "in_y", "out_y", "footer_y"):
+        assert key in data, f"config.json.example missing key: {key}"
+
+
 def test_load_config_returns_empty_dict_on_unquoted_keys():
     """Files with unquoted JSON keys (a common mistake) fall back to {}."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:

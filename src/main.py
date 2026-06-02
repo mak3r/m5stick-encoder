@@ -15,7 +15,7 @@ from ui.app import App
 from ui.buttons import ButtonFSM
 from ui.config import btn_b_repeat_delay_ms, btn_b_scroll_ms, load_config
 from ui.events import Button, Edge
-from ui.key_store import load_key, save_key
+from ui.key_store import load_setup, save_setup
 import ui.screen as screen
 from ui.sleep import SleepManager
 from ui.state import State
@@ -127,7 +127,7 @@ def _run_loop(
             dirty = True
 
         if dirty:
-            screen.render(display, app.state)
+            screen.render(display, app.state, app.ciphers)
 
         if sleep_mgr is not None:
             signal = sleep_mgr.tick()
@@ -165,11 +165,25 @@ def main() -> None:
         time.sleep_ms(1500)
 
         btn_b = Pin(_PIN_BTN_B, Pin.IN, Pin.PULL_UP)
+
+        saved_algo, saved_key = load_setup()
         state = State()
-        state.cipher_key = load_key()
+        state.screen = "setup_cipher"   # explicit: MicroPython shim ignores constructor kwargs
+        state.algorithm = saved_algo
+        state.cipher_key = saved_key
         ciphers = {name: cls() for name, cls in ALGORITHMS.items()}
-        app = App(state, ciphers, on_save_key=save_key)
+        order = list(ciphers.keys())
+        state.setup_idx = order.index(saved_algo) if saved_algo in order else 0
+        cipher = ciphers.get(saved_algo)
+        if hasattr(cipher, 'key'):
+            cipher.key = saved_key  # type: ignore[attr-defined]
+
+        def _save_fn(key: str) -> None:
+            save_setup(state.algorithm, key)
+
+        app = App(state, ciphers, on_save_key=_save_fn)
         cfg = load_config()
+        screen.configure(cfg)
         fsm = ButtonFSM(
             _time_ms,
             btn_b_repeat_delay_ms=btn_b_repeat_delay_ms(cfg),

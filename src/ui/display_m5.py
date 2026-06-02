@@ -59,16 +59,38 @@ class M5Display:
         M5.begin()
         _check_board()
         M5.Lcd.setRotation(1)  # 1 = landscape 240×135 on M5StickC PLUS
+        # setTextDatum is a TFT_eSPI method not exposed in all UIFlow builds;
+        # cache None when absent so center_x calls degrade gracefully.
+        self._set_datum = getattr(M5.Lcd, "setTextDatum", None)
+        self._font_loaded = False
 
     def fill(self, color: int) -> None:
         M5.Lcd.fillScreen(_PALETTE.get(color, 0x0000))
 
-    def text(self, s: str, x: int, y: int, color: int, scale: int = 1) -> None:
+    def text(self, s: str, x: int, y: int, color: int, scale: int = 1, center_x: bool = False) -> None:
         fg = _PALETTE.get(color, 0xFFFF)
         bg = _PALETTE.get(0, 0x0000)
         M5.Lcd.setTextSize(scale)
         M5.Lcd.setTextColor(fg, bg)
+        if center_x and self._set_datum is not None:
+            self._set_datum(1)  # TC_DATUM: top-centre, x is the horizontal midpoint
         M5.Lcd.drawString(s, x, y)
+        if center_x and self._set_datum is not None:
+            self._set_datum(0)  # TL_DATUM: restore default top-left datum
+
+    def load_font(self, name: str) -> None:
+        """Load a .vlw smooth font from /flash/res/font/<name>.vlw."""
+        M5.Lcd.loadFont(f"/flash/res/font/{name}.vlw")
+        self._font_loaded = True
+
+    def unload_font(self) -> None:
+        """Unload the smooth font and restore the default GLCDFONT."""
+        M5.Lcd.unloadFont()
+        self._font_loaded = False
+
+    def text_width(self, s: str) -> int:
+        """Return the pixel width of *s* in the currently-loaded font."""
+        return M5.Lcd.textWidth(s)
 
     def rect(self, x: int, y: int, w: int, h: int, color: int, fill: bool = False) -> None:
         c = _PALETTE.get(color, 0xFFFF)

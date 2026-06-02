@@ -85,17 +85,65 @@ An optional `config.json` file on the device filesystem (`:/config.json`) lets y
 
 ### Supported keys
 
+#### Button timing
+
 | Key | Type | Default | Description |
 |---|---|---|---|
 | `btn_b_scroll_ms` | int | `300` | Interval (ms) between repeated scroll events while BTN B is held |
 | `btn_b_repeat_delay_ms` | int | `500` | How long (ms) BTN B must be held before auto-scroll begins |
+
+#### Scroll wheel — fonts and scales
+
+VLW font values are stem names (no path, no `.vlw` extension) that match a font file already on the device filesystem. Empty string (`""`) uses the built-in GLCDFONT with the corresponding `*_scale` multiplier.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `wheel_font` | str | `""` | VLW font for non-center wheel letters; `""` = GLCDFONT |
+| `wheel_center_font` | str | `""` | VLW font for the center (selected) letter; falls back to `wheel_font` if empty |
+| `wheel_scale` | int | `2` | Integer scale for non-center wheel letters (GLCDFONT path only) |
+| `wheel_center_scale` | int | `3` | Integer scale for the center letter (GLCDFONT path only) |
+| `wheel_letter_gap` | int | `6` | Pixels between consecutive non-center letter slots |
+| `wheel_center_extra` | int | `3` | Extra pixels of clearance on each side of the center letter |
+| `wheel_center_y_offset` | int | `0` | Vertical shift (px, negative = up) for center letter only |
+| `in_font` | str | `""` | VLW font for the `in: …` line; `""` = GLCDFONT |
+| `in_scale` | int | `1` | Integer scale for the `in: …` line (GLCDFONT path only) |
+| `out_font` | str | `""` | VLW font for the `out: …` line; `""` = GLCDFONT |
+| `out_scale` | int | `1` | Integer scale for the `out: …` line (GLCDFONT path only) |
+| `in_out_scale` | int | — | Sets both `in_scale` and `out_scale` at once; overridden by the individual keys |
+
+#### Vertical layout (encode/decode screen)
+
+All values are top-y pixel coordinates on the 135px-tall display.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `wheel_y` | int | `18` | Top of both scroll wheels (plain and cipher) |
+| `cipher_row_y` | int | `52` | Top of the cipher scroll wheel row |
+| `in_y` | int | `86` | Top of the `in: …` line |
+| `out_y` | int | `100` | Top of the `out: …` line |
+| `footer_y` | int | `114` | Top of the footer hint line |
+
+#### [SETUP KEY] screen layout
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `setup_key_focus_y` | int | `54` | Top-y of the large key-buf display |
+| `setup_key_focus_scale` | int | `3` | Integer scale for key-buf when no VLW font is set |
+| `setup_key_focus_font` | str | `""` | VLW font stem for the large key-buf display |
+| `setup_key_line_y` | int | `84` | Top-y of the `key: …` tail label |
+| `setup_key_line_scale` | int | `1` | Integer scale for the `key: …` label when no VLW font is set |
+| `setup_key_line_font` | str | `""` | VLW font stem for the `key: …` label |
 
 ### Example
 
 ```json
 {
   "btn_b_scroll_ms": 200,
-  "btn_b_repeat_delay_ms": 400
+  "btn_b_repeat_delay_ms": 400,
+  "wheel_font": "Cascadia16",
+  "wheel_center_font": "Cascadia30",
+  "setup_key_focus_font": "Cascadia30",
+  "setup_key_line_font": "Cascadia12"
 }
 ```
 

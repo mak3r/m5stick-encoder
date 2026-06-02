@@ -20,6 +20,7 @@ class TextCall:
     y: int
     color: int
     scale: int = 1
+    center_x: bool = False
 
 
 @dataclass
@@ -30,6 +31,16 @@ class RectCall:
     h: int
     color: int
     fill: bool = False
+
+
+@dataclass
+class LoadFontCall:
+    name: str
+
+
+@dataclass
+class UnloadFontCall:
+    pass
 
 
 @dataclass
@@ -52,15 +63,30 @@ class DisplayMock:
     width: int = 240
     height: int = 135
     calls: list = field(default_factory=list)
+    _font: str = field(default="", repr=False)  # currently-loaded font name ("")=none
 
     def fill(self, color: int) -> None:
         self.calls.append(FillCall(color=color))
 
-    def text(self, s: str, x: int, y: int, color: int, scale: int = 1) -> None:
-        self.calls.append(TextCall(s=s, x=x, y=y, color=color, scale=scale))
+    def text(self, s: str, x: int, y: int, color: int, scale: int = 1, center_x: bool = False) -> None:
+        self.calls.append(TextCall(s=s, x=x, y=y, color=color, scale=scale, center_x=center_x))
 
     def rect(self, x: int, y: int, w: int, h: int, color: int, fill: bool = False) -> None:
         self.calls.append(RectCall(x=x, y=y, w=w, h=h, color=color, fill=fill))
+
+    def load_font(self, name: str) -> None:
+        self._font = name
+        self.calls.append(LoadFontCall(name=name))
+
+    def unload_font(self) -> None:
+        self._font = ""
+        self.calls.append(UnloadFontCall())
+
+    def text_width(self, s: str) -> int:
+        # Mock returns GLYPH_W per character regardless of font — consistent
+        # for layout tests which check relative spacing, not pixel accuracy.
+        from ui.screen import GLYPH_W
+        return len(s) * GLYPH_W
 
     def show(self) -> None:
         self.calls.append(ShowCall())
