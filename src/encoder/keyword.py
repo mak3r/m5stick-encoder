@@ -1,15 +1,22 @@
-"""Vigenère keyword cipher restricted to the A-Z uppercase alphabet.
+"""Keyword substitution cipher restricted to the A-Z uppercase alphabet.
 
-Each letter of the key shifts the corresponding plaintext letter forward
-(encode) or backward (decode) in the alphabet. The key cycles to cover
-longer messages. ``encode`` and ``decode`` are inverse operations, unlike
-rot13.
+The keyword is deduplicated (preserving order) and placed at the front of
+the cipher alphabet; the remaining letters follow in alphabetical order.
 
+Example — key "ZEBRA":
+  cipher alphabet: ZEBRACDFGHIJKLMNOPQSTUVWXY
+  A→Z, B→E, C→B, D→R, E→A, …
+
+Example — key "HELLO" (duplicate L collapsed):
+  deduped: HELO
+  cipher alphabet: HELOABCDFGIJKMNPQRSTUVWXYZ
+
+This is a monoalphabetic cipher: the mapping never changes as the user types.
 Character-set contract matches Rot13Cipher: only A-Z uppercase; anything
 else raises ``ValueError``.
 """
 
-_A = ord("A")
+_PLAIN = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 _DEFAULT_KEY = "KEY"
 
 
@@ -18,6 +25,7 @@ class KeywordCipher:
 
     def __init__(self, key: str = _DEFAULT_KEY) -> None:
         self._key = key.upper() if key else _DEFAULT_KEY
+        self._cipher = self._build(self._key)
 
     @property
     def key(self) -> str:
@@ -26,23 +34,32 @@ class KeywordCipher:
     @key.setter
     def key(self, value: str) -> None:
         self._key = value.upper() if value else _DEFAULT_KEY
+        self._cipher = self._build(self._key)
+
+    @staticmethod
+    def _build(key: str) -> str:
+        seen: set = set()
+        out = []
+        for ch in key:
+            if ch not in seen:
+                seen.add(ch)
+                out.append(ch)
+        for ch in _PLAIN:
+            if ch not in seen:
+                out.append(ch)
+        return "".join(out)
 
     def encode(self, text: str) -> str:
-        return self._vigenere(text, encrypt=True)
+        return self._sub(text, _PLAIN, self._cipher)
 
     def decode(self, text: str) -> str:
-        return self._vigenere(text, encrypt=False)
+        return self._sub(text, self._cipher, _PLAIN)
 
-    def _vigenere(self, text: str, encrypt: bool) -> str:
-        key = self._key
-        result = []
-        for ki, ch in enumerate(text):
-            code = ord(ch)
-            if code < _A or code > _A + 25:
+    def _sub(self, text: str, src: str, dst: str) -> str:
+        out = []
+        for ch in text:
+            idx = src.find(ch)
+            if idx < 0:
                 raise ValueError(f"keyword cipher only supports A-Z, got {ch!r}")
-            shift = ord(key[ki % len(key)]) - _A
-            if encrypt:
-                result.append(chr(_A + (code - _A + shift) % 26))
-            else:
-                result.append(chr(_A + (code - _A - shift) % 26))
-        return "".join(result)
+            out.append(dst[idx])
+        return "".join(out)

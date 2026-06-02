@@ -231,13 +231,27 @@ def _cipher_row(state: State, ciphers: dict | None = None) -> list[str]:
     Both ENC and DEC modes use the same cipher alphabet so _render_encode can
     swap which row sits on top rather than recomputing a reversed mapping.
     """
-    # Polyalphabetic (keyword/Vigenère): show the Caesar alphabet for the
-    # current key character.  A fresh cipher instance with a 1-char key applies
-    # the same shift to every position → guaranteed permutation, no duplicates.
-    if state.algorithm == "keyword" and state.cipher_key:
+    # Polyalphabetic (Vigenère): show the Caesar alphabet for the current key
+    # character.  A fresh cipher instance with a 1-char key applies the same
+    # shift to every position → guaranteed permutation, no duplicates.
+    if state.algorithm == "vigenere" and state.cipher_key:
         ki = len(state.in_buf) % len(state.cipher_key)
         shift = ord(state.cipher_key[ki]) - ord('A')
         return [ALPHABET[(i + shift) % 26] for i in range(26)]
+
+    # Keyword substitution: build the permuted alphabet from state.cipher_key
+    # so the correct mapping is shown even when the caller omits the ciphers dict.
+    if state.algorithm == "keyword" and state.cipher_key:
+        seen: set = set()
+        out: list = []
+        for ch in state.cipher_key:
+            if ch not in seen:
+                seen.add(ch)
+                out.append(ch)
+        for ch in ALPHABET:
+            if ch not in seen:
+                out.append(ch)
+        return out
 
     # Monoalphabetic: encode(ALPHABET) is always a permutation.
     cipher = None
