@@ -2,7 +2,22 @@ import pytest
 
 from ui.display import Display
 from ui.display_mock import DisplayMock, LoadFontCall, ShowCall, TextCall, UnloadFontCall
-from ui.screen import ALPHABET, CIPHER_ROW_Y, CURSOR, FG, GLYPH_W, IN_SCALE, IN_Y, LINE_CHARS, OUT_SCALE, WHEEL_CENTER_EXTRA, WHEEL_CENTER_SCALE, WHEEL_LETTER_GAP, WHEEL_SCALE, WHEEL_Y, render
+from ui.screen import (
+    ALPHABET,
+    CIPHER_ROW_Y,
+    CURSOR,
+    FG,
+    GLYPH_W,
+    IN_SCALE,
+    IN_Y,
+    LINE_CHARS,
+    OUT_SCALE,
+    WHEEL_CENTER_EXTRA,
+    WHEEL_CENTER_SCALE,
+    WHEEL_SCALE,
+    WHEEL_Y,
+    render,
+)
 from ui.state import State
 
 
@@ -246,7 +261,9 @@ def test_cipher_row_y_between_wheel_y_and_in_y(mock: DisplayMock):
 
 def test_cipher_row_shows_visible_subset(mock: DisplayMock):
     render(mock, State(wheel_idx=12))
-    cipher_row_calls = [c for c in mock.texts() if c.y == CIPHER_ROW_Y and len(c.s) == 1 and c.s.isalpha()]
+    cipher_row_calls = [
+        c for c in mock.texts() if c.y == CIPHER_ROW_Y and len(c.s) == 1 and c.s.isalpha()
+    ]
     assert 0 < len(cipher_row_calls) < 26, "cipher scroll wheel must show a clipped window"
 
 

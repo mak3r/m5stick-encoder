@@ -188,10 +188,10 @@ def test_configure_empty_cfg_keeps_defaults():
         "footer_y": screen.FOOTER_Y,
     }
     screen.configure({})
-    assert screen.WHEEL_SCALE == before["wheel_scale"]
-    assert screen.CIPHER_ROW_Y == before["cipher_row_y"]
-    assert screen.IN_SCALE == before["in_scale"]
-    assert screen.OUT_SCALE == before["out_scale"]
+    assert before["wheel_scale"] == screen.WHEEL_SCALE
+    assert before["cipher_row_y"] == screen.CIPHER_ROW_Y
+    assert before["in_scale"] == screen.IN_SCALE
+    assert before["out_scale"] == screen.OUT_SCALE
 
 
 def test_configure_overrides_take_effect():

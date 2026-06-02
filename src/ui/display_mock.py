@@ -68,7 +68,9 @@ class DisplayMock:
     def fill(self, color: int) -> None:
         self.calls.append(FillCall(color=color))
 
-    def text(self, s: str, x: int, y: int, color: int, scale: int = 1, center_x: bool = False) -> None:
+    def text(  # noqa: PLR0913
+        self, s: str, x: int, y: int, color: int, scale: int = 1, center_x: bool = False
+    ) -> None:
         self.calls.append(TextCall(s=s, x=x, y=y, color=color, scale=scale, center_x=center_x))
 
     def rect(self, x: int, y: int, w: int, h: int, color: int, fill: bool = False) -> None:
