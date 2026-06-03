@@ -532,7 +532,7 @@ def _render_about(
 
     if _ABOUT_FOOTER_FONT:
         display.load_font(_ABOUT_FOOTER_FONT)
-    for i, (label, x) in enumerate(zip(_ABOUT_FOOTER_LABELS, _ABOUT_FOOTER_X)):
+    for i, (label, x) in enumerate(zip(_ABOUT_FOOTER_LABELS, _ABOUT_FOOTER_X, strict=True)):
         color = ACCENT if i == state.about_footer_idx else FG
         display.text(label, x, FOOTER_Y, color,
                      scale=1 if _ABOUT_FOOTER_FONT else _ABOUT_FOOTER_SCALE)

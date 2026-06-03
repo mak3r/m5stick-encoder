@@ -3,6 +3,10 @@ import pytest
 from ui.display import Display
 from ui.display_mock import DisplayMock, LoadFontCall, ShowCall, TextCall, UnloadFontCall
 from ui.screen import (
+    _ABOUT_BODY_DY,
+    _ABOUT_BODY_Y0,
+    _ABOUT_FOOTER_LABELS,
+    _ABOUT_FOOTER_X,
     ACCENT,
     ALPHABET,
     CIPHER_ROW_Y,
@@ -19,11 +23,6 @@ from ui.screen import (
     WHEEL_CENTER_SCALE,
     WHEEL_SCALE,
     WHEEL_Y,
-    _ABOUT_BODY_DY,
-    _ABOUT_BODY_Y0,
-    _ABOUT_FOOTER_LABELS,
-    _ABOUT_FOOTER_X,
-    _ABOUT_HEADER_SCALE,
     render,
 )
 from ui.state import State
@@ -477,7 +476,7 @@ def test_about_body_lines_spaced_by_body_dy(mock: DisplayMock):
         c.y for c in mock.texts()
         if _ABOUT_BODY_Y0 <= c.y < FOOTER_Y
     })
-    for a, b in zip(ys, ys[1:]):
+    for a, b in zip(ys, ys[1:], strict=False):
         assert b - a == _ABOUT_BODY_DY
 
 
@@ -486,7 +485,9 @@ def test_about_shows_all_five_body_lines(mock: DisplayMock):
         m = DisplayMock()
         render(m, State(screen="about", about_idx=idx))
         body_calls = [c for c in m.texts() if _ABOUT_BODY_Y0 <= c.y < FOOTER_Y]
-        assert len(body_calls) == 5, f"about_idx={idx}: expected 5 body lines, got {len(body_calls)}"
+        assert len(body_calls) == 5, (
+            f"about_idx={idx}: expected 5 body lines, got {len(body_calls)}"
+        )
 
 
 def test_about_body_lines_above_footer(mock: DisplayMock):
@@ -507,8 +508,10 @@ def test_about_footer_three_items_rendered(mock: DisplayMock):
 def test_about_footer_items_at_correct_x_positions(mock: DisplayMock):
     render(mock, State(screen="about", about_idx=0, about_footer_idx=1))
     footer = {c.s: c for c in mock.texts() if c.y == FOOTER_Y and c.s in _ABOUT_FOOTER_LABELS}
-    for label, expected_x in zip(_ABOUT_FOOTER_LABELS, _ABOUT_FOOTER_X):
-        assert footer[label].x == expected_x, f"{label!r} expected x={expected_x}, got {footer[label].x}"
+    for label, expected_x in zip(_ABOUT_FOOTER_LABELS, _ABOUT_FOOTER_X, strict=True):
+        assert footer[label].x == expected_x, (
+            f"{label!r} expected x={expected_x}, got {footer[label].x}"
+        )
 
 
 def test_about_footer_selected_item_is_accent(mock: DisplayMock):
@@ -531,7 +534,9 @@ def test_about_footer_cursor_highlights_correct_item(cursor_idx: int):
     footer = {c.s: c for c in m.texts() if c.s in _ABOUT_FOOTER_LABELS}
     for i, label in enumerate(_ABOUT_FOOTER_LABELS):
         expected = ACCENT if i == cursor_idx else FG
-        assert footer[label].color == expected, f"{label!r} at cursor_idx={cursor_idx}: expected color {expected}"
+        assert footer[label].color == expected, (
+            f"{label!r} at cursor_idx={cursor_idx}: expected color {expected}"
+        )
 
 
 def test_about_different_pages_show_different_headers(mock: DisplayMock):
