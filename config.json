@@ -29,6 +29,15 @@
   "setup_key_focus_font": "Cascadia30",
   "setup_key_line_y": 84,
   "setup_key_line_scale": 1,
-  "setup_key_line_font": "Cascadia12"
+  "setup_key_line_font": "Cascadia12",
+
+  "about_header_scale": 1,
+  "about_header_font": "Cascadia12",
+  "about_body_y0": 22,
+  "about_body_dy": 18,
+  "about_body_scale": 1,
+  "about_body_font": "Cascadia14",
+  "about_footer_scale": 1,
+  "about_footer_font": "Cascadia12"
 
 }

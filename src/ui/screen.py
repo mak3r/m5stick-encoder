@@ -9,6 +9,7 @@ makes the most recent draw calls visible.
   "setup_cipher" → _render_setup_cipher  (boot cipher selection)
   "setup_key"    → _render_setup_key     (keyword entry)
   "encode"       → _render_encode        (main encode/decode screen)
+  "about"        → _render_about         (per-algorithm info pages)
 """
 
 from encoder import ALGORITHMS as _ALGORITHMS
@@ -77,6 +78,51 @@ _SETUP_KEY_LINE_Y = 84        # top-y of the "key: …" tail label
 _SETUP_KEY_LINE_SCALE = 1     # integer scale when no VLW font is loaded
 _SETUP_KEY_LINE_FONT = ""     # VLW font stem for the "key: …" tail label
 
+# About screen: header, body, and footer layout — all configurable via configure().
+_ABOUT_HEADER_SCALE  = 2      # integer scale for the algorithm name heading
+_ABOUT_HEADER_FONT   = ""     # VLW font stem for header; "" = GLCDFONT × scale
+_ABOUT_BODY_Y0       = 22     # top-y of the first body line
+_ABOUT_BODY_DY       = 12     # px between body lines (8px glyph + 4px leading)
+_ABOUT_BODY_SCALE    = 1      # integer scale for body text
+_ABOUT_BODY_FONT     = ""     # VLW font stem for body text; "" = GLCDFONT × scale
+_ABOUT_FOOTER_SCALE  = 1      # integer scale for footer labels
+_ABOUT_FOOTER_FONT   = ""     # VLW font stem for footer labels; "" = GLCDFONT × scale
+_ABOUT_FOOTER_LABELS = ("<-prev", "exit", "next->")
+# Three equal 80px zones; each label centred in its zone.
+# "<-prev"=48px → (80-48)//2=16; "exit"=32px → 80+(80-32)//2=104; "next->"=48px → 160+16=176
+_ABOUT_FOOTER_X = (16, 104, 176)
+
+_ABOUT_TEXT: dict = {
+    "rot13": (
+        "ROT13 shifts each letter",
+        "exactly 13 places forward.",
+        "A becomes N, B becomes O.",
+        "Use it twice to get your",
+        "original message back!",
+    ),
+    "caesar": (
+        "Caesar cipher shifts every",
+        "letter by a secret number.",
+        "Julius Caesar used shift 3:",
+        "A becomes D, B becomes E.",
+        "Pick your own shift letter!",
+    ),
+    "keyword": (
+        "Start with a keyword, remove",
+        "duplicate letters, then add",
+        "the rest of the alphabet.",
+        "Each plain letter maps to",
+        "its spot in this new order.",
+    ),
+    "vigenere": (
+        "Vigenere uses a keyword to",
+        "pick a different shift for",
+        "each letter you type. Much",
+        "harder to crack than Caesar",
+        "because the shift changes!",
+    ),
+}
+
 
 def configure(cfg: dict) -> None:
     """Apply layout overrides from a runtime config dict (loaded from config.json).
@@ -108,6 +154,14 @@ def configure(cfg: dict) -> None:
     setup_key_line_y         int  top-y of the "key: …" tail on setup_key      (default 84)
     setup_key_line_scale     int  integer scale for "key:" label (no VLW font) (default 1)
     setup_key_line_font      str  stem of .vlw file for the "key: …" label     (default "")
+    about_header_scale       int  scale for the algorithm name heading          (default 2)
+    about_header_font        str  stem of .vlw file for the heading             (default "")
+    about_body_y0            int  top-y of the first body line                  (default 22)
+    about_body_dy            int  px between body lines                         (default 12)
+    about_body_scale         int  integer scale for body text                   (default 1)
+    about_body_font          str  stem of .vlw file for body text               (default "")
+    about_footer_scale       int  integer scale for footer labels               (default 1)
+    about_footer_font        str  stem of .vlw file for footer labels           (default "")
     """
     global WHEEL_SCALE, WHEEL_CENTER_SCALE, IN_SCALE, OUT_SCALE
     global WHEEL_LETTER_GAP, WHEEL_CENTER_EXTRA, WHEEL_CENTER_Y_OFFSET
@@ -115,6 +169,9 @@ def configure(cfg: dict) -> None:
     global WHEEL_Y, CIPHER_ROW_Y, IN_Y, OUT_Y, FOOTER_Y
     global _SETUP_KEY_FOCUS_Y, _SETUP_KEY_FOCUS_SCALE, _SETUP_KEY_FOCUS_FONT
     global _SETUP_KEY_LINE_Y, _SETUP_KEY_LINE_SCALE, _SETUP_KEY_LINE_FONT
+    global _ABOUT_HEADER_SCALE, _ABOUT_HEADER_FONT
+    global _ABOUT_BODY_Y0, _ABOUT_BODY_DY, _ABOUT_BODY_SCALE, _ABOUT_BODY_FONT
+    global _ABOUT_FOOTER_SCALE, _ABOUT_FOOTER_FONT
     WHEEL_SCALE             = int(cfg.get("wheel_scale",             WHEEL_SCALE))
     WHEEL_CENTER_SCALE      = int(cfg.get("wheel_center_scale",      WHEEL_CENTER_SCALE))
     # in_out_scale is a legacy fallback; in_scale / out_scale take precedence.
@@ -139,6 +196,14 @@ def configure(cfg: dict) -> None:
     _SETUP_KEY_LINE_Y       = int(cfg.get("setup_key_line_y",        _SETUP_KEY_LINE_Y))
     _SETUP_KEY_LINE_SCALE   = int(cfg.get("setup_key_line_scale",    _SETUP_KEY_LINE_SCALE))
     _SETUP_KEY_LINE_FONT    = str(cfg.get("setup_key_line_font",     _SETUP_KEY_LINE_FONT))
+    _ABOUT_HEADER_SCALE     = int(cfg.get("about_header_scale",      _ABOUT_HEADER_SCALE))
+    _ABOUT_HEADER_FONT      = str(cfg.get("about_header_font",       _ABOUT_HEADER_FONT))
+    _ABOUT_BODY_Y0          = int(cfg.get("about_body_y0",           _ABOUT_BODY_Y0))
+    _ABOUT_BODY_DY          = int(cfg.get("about_body_dy",           _ABOUT_BODY_DY))
+    _ABOUT_BODY_SCALE       = int(cfg.get("about_body_scale",        _ABOUT_BODY_SCALE))
+    _ABOUT_BODY_FONT        = str(cfg.get("about_body_font",         _ABOUT_BODY_FONT))
+    _ABOUT_FOOTER_SCALE     = int(cfg.get("about_footer_scale",      _ABOUT_FOOTER_SCALE))
+    _ABOUT_FOOTER_FONT      = str(cfg.get("about_footer_font",       _ABOUT_FOOTER_FONT))
 
 
 def _wheel_char_widths(display: Display) -> tuple[int, int]:
@@ -288,6 +353,8 @@ def render(display: Display, state: State, ciphers: dict | None = None) -> None:
         _render_setup_cipher(display, state, ciphers)
     elif state.screen == "setup_key":
         _render_setup_key(display, state)
+    elif state.screen == "about":
+        _render_about(display, state, ciphers)
     else:
         _render_encode(display, state, ciphers)
 
@@ -301,7 +368,7 @@ def _render_setup_cipher(
     batt_str = f"B:{state.battery_pct}%"
     display.text(batt_str, WIDTH - 6 * GLYPH_W, TOP_BAR_Y, FG, scale=1)
 
-    order = list((ciphers or _ALGORITHMS).keys())
+    order = list((ciphers or _ALGORITHMS).keys()) + ["about"]
     for i, name in enumerate(order):
         y = _SETUP_LIST_Y0 + i * _SETUP_LIST_DY
         cursor = ">" if i == state.setup_idx else " "
@@ -434,4 +501,42 @@ def _render_encode(
     if OUT_FONT:
         display.unload_font()
     display.text("A:add  AA:back  AL:flip", 2, FOOTER_Y, FG, scale=1)
+    display.show()
+
+
+def _render_about(
+    display: Display, state: State, ciphers: dict | None = None
+) -> None:
+    display.fill(BG)
+
+    order = list((ciphers or _ALGORITHMS).keys())
+    algo = order[state.about_idx] if 0 <= state.about_idx < len(order) else order[0]
+
+    if _ABOUT_HEADER_FONT:
+        display.load_font(_ABOUT_HEADER_FONT)
+    display.text(algo.upper(), 2, TOP_BAR_Y, ACCENT,
+                 scale=1 if _ABOUT_HEADER_FONT else _ABOUT_HEADER_SCALE)
+    if _ABOUT_HEADER_FONT:
+        display.unload_font()
+
+    batt_str = f"B:{state.battery_pct}%"
+    display.text(batt_str, WIDTH - 6 * GLYPH_W, TOP_BAR_Y, FG, scale=1)
+
+    if _ABOUT_BODY_FONT:
+        display.load_font(_ABOUT_BODY_FONT)
+    for i, line in enumerate(_ABOUT_TEXT.get(algo, ())):
+        display.text(line, 2, _ABOUT_BODY_Y0 + i * _ABOUT_BODY_DY, FG,
+                     scale=1 if _ABOUT_BODY_FONT else _ABOUT_BODY_SCALE)
+    if _ABOUT_BODY_FONT:
+        display.unload_font()
+
+    if _ABOUT_FOOTER_FONT:
+        display.load_font(_ABOUT_FOOTER_FONT)
+    for i, (label, x) in enumerate(zip(_ABOUT_FOOTER_LABELS, _ABOUT_FOOTER_X)):
+        color = ACCENT if i == state.about_footer_idx else FG
+        display.text(label, x, FOOTER_Y, color,
+                     scale=1 if _ABOUT_FOOTER_FONT else _ABOUT_FOOTER_SCALE)
+    if _ABOUT_FOOTER_FONT:
+        display.unload_font()
+
     display.show()

@@ -6,8 +6,10 @@ from typing import Literal
 class State:
     """UI state. Mutated in place by ``App.handle()``.
 
-    - ``screen``: active screen — "setup_cipher" | "setup_key" | "encode".
+    - ``screen``: active screen — "setup_cipher" | "setup_key" | "encode" | "about".
     - ``setup_idx``: cursor position in the cipher-selection list.
+    - ``about_idx``: algorithm page shown in the about screen (0=rot13..3=vigenere).
+    - ``about_footer_idx``: footer cursor in the about screen (0=<-prev 1=exit 2=next->).
     - ``mode``: ENC encodes plain→cipher; DEC decodes cipher→plain.
     - ``algorithm``: key into ``encoder.ALGORITHMS``.
     - ``wheel_idx``: 0..25, indexes into ``A``..``Z`` for the current
@@ -20,6 +22,8 @@ class State:
 
     screen: str = "encode"
     setup_idx: int = 0
+    about_idx: int = 0
+    about_footer_idx: int = 1
     mode: Literal["ENC", "DEC"] = "ENC"
     algorithm: str = "rot13"
     wheel_idx: int = 0

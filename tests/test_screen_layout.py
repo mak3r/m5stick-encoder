@@ -3,19 +3,27 @@ import pytest
 from ui.display import Display
 from ui.display_mock import DisplayMock, LoadFontCall, ShowCall, TextCall, UnloadFontCall
 from ui.screen import (
+    ACCENT,
     ALPHABET,
     CIPHER_ROW_Y,
     CURSOR,
     FG,
+    FOOTER_Y,
     GLYPH_W,
     IN_SCALE,
     IN_Y,
     LINE_CHARS,
     OUT_SCALE,
+    TOP_BAR_Y,
     WHEEL_CENTER_EXTRA,
     WHEEL_CENTER_SCALE,
     WHEEL_SCALE,
     WHEEL_Y,
+    _ABOUT_BODY_DY,
+    _ABOUT_BODY_Y0,
+    _ABOUT_FOOTER_LABELS,
+    _ABOUT_FOOTER_X,
+    _ABOUT_HEADER_SCALE,
     render,
 )
 from ui.state import State
@@ -430,3 +438,118 @@ def test_keyword_subst_cipher_row_center_is_z_for_zebra(mock: DisplayMock):
     state = State(algorithm="keyword", cipher_key="ZEBRA", wheel_idx=0)
     chars = _cipher_row_chars(mock, state)
     assert chars[0] == "Z", f"expected 'Z' at cipher position 0, got {chars[0]!r}"
+
+
+# ---------------------------------------------------------------------------
+# About screen layout
+# ---------------------------------------------------------------------------
+
+def test_about_screen_calls_show_last(mock: DisplayMock):
+    render(mock, State(screen="about", about_idx=0))
+    assert isinstance(mock.calls[-1], ShowCall)
+
+
+def test_about_header_shows_algorithm_name_uppercased(mock: DisplayMock):
+    render(mock, State(screen="about", about_idx=0))
+    assert any(c.s == "ROT13" for c in mock.texts())
+
+
+def test_about_header_is_accent_color(mock: DisplayMock):
+    render(mock, State(screen="about", about_idx=0))
+    header = next(c for c in mock.texts() if c.s == "ROT13")
+    assert header.color == ACCENT
+
+
+def test_about_header_at_top_bar_y(mock: DisplayMock):
+    render(mock, State(screen="about", about_idx=0))
+    header = next(c for c in mock.texts() if c.s == "ROT13")
+    assert header.y == TOP_BAR_Y
+
+
+def test_about_body_first_line_at_body_y0(mock: DisplayMock):
+    render(mock, State(screen="about", about_idx=0))
+    assert any(c.y == _ABOUT_BODY_Y0 for c in mock.texts())
+
+
+def test_about_body_lines_spaced_by_body_dy(mock: DisplayMock):
+    render(mock, State(screen="about", about_idx=0))
+    ys = sorted({
+        c.y for c in mock.texts()
+        if _ABOUT_BODY_Y0 <= c.y < FOOTER_Y
+    })
+    for a, b in zip(ys, ys[1:]):
+        assert b - a == _ABOUT_BODY_DY
+
+
+def test_about_shows_all_five_body_lines(mock: DisplayMock):
+    for idx in range(4):
+        m = DisplayMock()
+        render(m, State(screen="about", about_idx=idx))
+        body_calls = [c for c in m.texts() if _ABOUT_BODY_Y0 <= c.y < FOOTER_Y]
+        assert len(body_calls) == 5, f"about_idx={idx}: expected 5 body lines, got {len(body_calls)}"
+
+
+def test_about_body_lines_above_footer(mock: DisplayMock):
+    for idx in range(4):
+        m = DisplayMock()
+        render(m, State(screen="about", about_idx=idx))
+        body_calls = [c for c in m.texts() if _ABOUT_BODY_Y0 <= c.y < FOOTER_Y]
+        assert all(c.y + 8 <= FOOTER_Y for c in body_calls)
+
+
+def test_about_footer_three_items_rendered(mock: DisplayMock):
+    render(mock, State(screen="about", about_idx=0))
+    footer_strings = {c.s for c in mock.texts() if c.y == FOOTER_Y}
+    for label in _ABOUT_FOOTER_LABELS:
+        assert label in footer_strings
+
+
+def test_about_footer_items_at_correct_x_positions(mock: DisplayMock):
+    render(mock, State(screen="about", about_idx=0, about_footer_idx=1))
+    footer = {c.s: c for c in mock.texts() if c.y == FOOTER_Y and c.s in _ABOUT_FOOTER_LABELS}
+    for label, expected_x in zip(_ABOUT_FOOTER_LABELS, _ABOUT_FOOTER_X):
+        assert footer[label].x == expected_x, f"{label!r} expected x={expected_x}, got {footer[label].x}"
+
+
+def test_about_footer_selected_item_is_accent(mock: DisplayMock):
+    render(mock, State(screen="about", about_idx=0, about_footer_idx=1))
+    exit_call = next(c for c in mock.texts() if c.s == "exit")
+    assert exit_call.color == ACCENT
+
+
+def test_about_footer_unselected_items_are_fg(mock: DisplayMock):
+    render(mock, State(screen="about", about_idx=0, about_footer_idx=1))
+    for label in ("<-prev", "next->"):
+        call = next(c for c in mock.texts() if c.s == label)
+        assert call.color == FG
+
+
+@pytest.mark.parametrize("cursor_idx", [0, 1, 2])
+def test_about_footer_cursor_highlights_correct_item(cursor_idx: int):
+    m = DisplayMock()
+    render(m, State(screen="about", about_idx=0, about_footer_idx=cursor_idx))
+    footer = {c.s: c for c in m.texts() if c.s in _ABOUT_FOOTER_LABELS}
+    for i, label in enumerate(_ABOUT_FOOTER_LABELS):
+        expected = ACCENT if i == cursor_idx else FG
+        assert footer[label].color == expected, f"{label!r} at cursor_idx={cursor_idx}: expected color {expected}"
+
+
+def test_about_different_pages_show_different_headers(mock: DisplayMock):
+    headers = set()
+    for idx in range(4):
+        m = DisplayMock()
+        render(m, State(screen="about", about_idx=idx))
+        h = next(c for c in m.texts() if c.y == TOP_BAR_Y and c.color == ACCENT)
+        headers.add(h.s)
+    assert len(headers) == 4, "each about page must have a unique header"
+
+
+def test_about_setup_cipher_shows_about_item(mock: DisplayMock):
+    render(mock, State(screen="setup_cipher", setup_idx=0))
+    assert any("about" in c.s for c in mock.texts())
+
+
+def test_about_setup_cipher_about_item_highlighted_when_selected(mock: DisplayMock):
+    render(mock, State(screen="setup_cipher", setup_idx=4))
+    about_line = next(c for c in mock.texts() if "about" in c.s and c.color == ACCENT)
+    assert about_line is not None

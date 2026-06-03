@@ -262,8 +262,8 @@ def test_setup_cipher_b_scrolls_up():
 
 def test_setup_cipher_scrolling_wraps():
     app = _make_setup_cipher_app(setup_idx=0)
-    app.handle(ButtonEvent.BTN_B_PRESS)  # wraps from 0 to last
-    assert app.state.setup_idx == len(app.ciphers) - 1
+    app.handle(ButtonEvent.BTN_B_PRESS)  # wraps from 0 to last ("about")
+    assert app.state.setup_idx == len(app.ciphers)  # "about" appended after ciphers
 
 
 def test_setup_cipher_select_rot13_goes_to_encode():
@@ -525,6 +525,136 @@ def test_keyword_confirm_does_not_touch_caesar_key():
     app.handle(ButtonEvent.BTN_A_LONG)
     assert app.state.caesar_key == "F"
     assert app.state.cipher_key == "ZEBRA"
+
+
+# ---------------------------------------------------------------------------
+# about screen
+# ---------------------------------------------------------------------------
+
+def _make_about_app(about_idx=0, about_footer_idx=1):
+    from encoder.caesar import CaesarCipher
+    from encoder.keyword import KeywordCipher
+    from encoder.vigenere import VigenèreCipher
+    state = State(screen="about", about_idx=about_idx, about_footer_idx=about_footer_idx)
+    return App(state, {
+        "rot13": Rot13Cipher(),
+        "caesar": CaesarCipher(),
+        "keyword": KeywordCipher(),
+        "vigenere": VigenèreCipher(),
+    })
+
+
+def test_about_pwr_short_advances_footer_cursor():
+    app = _make_about_app(about_footer_idx=0)
+    app.handle(ButtonEvent.PWR_SHORT)
+    assert app.state.about_footer_idx == 1
+
+
+def test_about_pwr_short_wraps_footer_cursor():
+    app = _make_about_app(about_footer_idx=2)
+    app.handle(ButtonEvent.PWR_SHORT)
+    assert app.state.about_footer_idx == 0
+
+
+def test_about_btn_b_retreats_footer_cursor():
+    app = _make_about_app(about_footer_idx=2)
+    app.handle(ButtonEvent.BTN_B_PRESS)
+    assert app.state.about_footer_idx == 1
+
+
+def test_about_btn_b_long_retreats_footer_cursor():
+    app = _make_about_app(about_footer_idx=2)
+    app.handle(ButtonEvent.BTN_B_LONG)
+    assert app.state.about_footer_idx == 1
+
+
+def test_about_btn_b_wraps_footer_cursor():
+    app = _make_about_app(about_footer_idx=0)
+    app.handle(ButtonEvent.BTN_B_PRESS)
+    assert app.state.about_footer_idx == 2
+
+
+def test_about_a_on_next_advances_page():
+    app = _make_about_app(about_idx=0, about_footer_idx=2)
+    app.handle(ButtonEvent.BTN_A_PRESS)
+    assert app.state.about_idx == 1
+    assert app.state.screen == "about"
+
+
+def test_about_a_on_next_resets_footer_to_exit():
+    app = _make_about_app(about_idx=0, about_footer_idx=2)
+    app.handle(ButtonEvent.BTN_A_PRESS)
+    assert app.state.about_footer_idx == 1
+
+
+def test_about_a_on_next_wraps_from_last_page():
+    app = _make_about_app(about_idx=3, about_footer_idx=2)
+    app.handle(ButtonEvent.BTN_A_PRESS)
+    assert app.state.about_idx == 0
+
+
+def test_about_a_on_prev_retreats_page():
+    app = _make_about_app(about_idx=2, about_footer_idx=0)
+    app.handle(ButtonEvent.BTN_A_PRESS)
+    assert app.state.about_idx == 1
+    assert app.state.screen == "about"
+
+
+def test_about_a_on_prev_resets_footer_to_exit():
+    app = _make_about_app(about_idx=2, about_footer_idx=0)
+    app.handle(ButtonEvent.BTN_A_PRESS)
+    assert app.state.about_footer_idx == 1
+
+
+def test_about_a_on_prev_wraps_from_first_page():
+    app = _make_about_app(about_idx=0, about_footer_idx=0)
+    app.handle(ButtonEvent.BTN_A_PRESS)
+    assert app.state.about_idx == 3
+
+
+def test_about_a_on_exit_returns_to_setup_cipher():
+    app = _make_about_app(about_footer_idx=1)
+    app.handle(ButtonEvent.BTN_A_PRESS)
+    assert app.state.screen == "setup_cipher"
+
+
+def test_about_a_on_exit_does_not_change_about_idx():
+    app = _make_about_app(about_idx=2, about_footer_idx=1)
+    app.handle(ButtonEvent.BTN_A_PRESS)
+    assert app.state.about_idx == 2
+
+
+def test_about_unhandled_events_return_false():
+    app = _make_about_app()
+    assert app.handle(ButtonEvent.BTN_A_DOUBLE) is False
+    assert app.handle(ButtonEvent.BTN_A_LONG) is False
+    assert app.handle(ButtonEvent.PWR_DOUBLE) is False
+
+
+def test_setup_cipher_about_item_is_selectable():
+    app = _make_setup_cipher_app(setup_idx=4)
+    app.handle(ButtonEvent.BTN_A_PRESS)
+    assert app.state.screen == "about"
+    assert app.state.about_idx == 0
+    assert app.state.about_footer_idx == 1
+
+
+def test_setup_cipher_includes_about_in_scrolling():
+    app = _make_setup_cipher_app(setup_idx=3)
+    app.handle(ButtonEvent.PWR_SHORT)
+    assert app.state.setup_idx == 4
+
+
+def test_setup_cipher_b_from_0_wraps_to_about():
+    app = _make_setup_cipher_app(setup_idx=0)
+    app.handle(ButtonEvent.BTN_B_PRESS)
+    assert app.state.setup_idx == 4
+
+
+def test_setup_cipher_pwr_from_about_wraps_to_0():
+    app = _make_setup_cipher_app(setup_idx=4)
+    app.handle(ButtonEvent.PWR_SHORT)
+    assert app.state.setup_idx == 0
 
 
 def test_keyword_setup_key_updates_cipher_instance():
